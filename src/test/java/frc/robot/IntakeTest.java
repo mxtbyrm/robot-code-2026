@@ -138,13 +138,13 @@ class IntakeTest {
     }
 
     @Test
-    void deployTolerance_isReasonableRelativeToTravel() {
-        // Tolerance can be larger than travel in mechanism rotations if the travel is very small.
-        // Just verify it's a small positive value and not absurdly large.
+    void deployTolerance_isSmallerThanTravel() {
+        double travel = Math.abs(IntakeConstants.kDeployExtendedRotations - IntakeConstants.kDeployStowedRotations);
         assertTrue(IntakeConstants.kDeployToleranceRotations > 0,
                 "Tolerance must be positive");
-        assertTrue(IntakeConstants.kDeployToleranceRotations < 1.0,
-                "Tolerance should be less than 1 full rotation, got " + IntakeConstants.kDeployToleranceRotations);
+        assertTrue(IntakeConstants.kDeployToleranceRotations < travel,
+                "Tolerance (" + IntakeConstants.kDeployToleranceRotations
+                + ") must be smaller than total travel (" + travel + ")");
     }
 
     // ==================== DEPLOY AT TARGET LOGIC ====================

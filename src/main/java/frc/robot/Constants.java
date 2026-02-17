@@ -648,8 +648,9 @@ public final class Constants {
             { kDeployExtendedRotations,              0.60 },  // full deploy — linkage extended, max torque + extra weight
         };
 
-        // Deploy tolerance — ~6% of full deploy travel
-        public static final double kDeployToleranceRotations = 0.01;
+        // Deploy tolerance — ~10% of full deploy travel
+        // Travel = |kDeployExtendedRotations| ≈ 0.00323 mechanism rotations
+        public static final double kDeployToleranceRotations = 0.0003;
 
         // Deploy current limit (amps) — lower because it's just swinging an arm
         public static final double kDeployCurrentLimit = 30.0;
