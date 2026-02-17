@@ -104,11 +104,11 @@ Temporary Items
 .apdisk
 
 ### VisualStudioCode ###
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+.vscode/
+
+### Claude ###
+.claude/
+CLAUDE.md
 
 ### Windows ###
 # Windows thumbnail cache files
