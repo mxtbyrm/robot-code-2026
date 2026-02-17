@@ -1,8 +1,6 @@
 package frc.robot;
 
 import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 
@@ -60,11 +58,6 @@ class ShooterTest {
 
         Translation2d robotToHub = hubPos.minus(robotPos);
         double distanceToHub = robotToHub.getNorm();
-
-        double fieldAngleToHubRad = Math.atan2(robotToHub.getY(), robotToHub.getX());
-        double turretAngleRad = fieldAngleToHubRad - robotHeadingRad;
-        double staticTurretAngle = Math.toDegrees(MathUtil.angleModulus(turretAngleRad))
-                + ShooterConstants.kTurretMountOffsetDegrees;
 
         // Distance-based time-of-flight
         double tof = timeOfFlightTable.get(distanceToHub);
