@@ -5,16 +5,16 @@ import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.MotionMagicConfigs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.DutyCycleOut;
-import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.signals.GravityTypeValue;
 import com.ctre.phoenix6.signals.InvertedValue;
-import com.ctre.phoenix6.signals.MotorAlignmentValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
+import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.Current;
+import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -73,15 +73,24 @@ public class Intake extends SubsystemBase {
 
     // ==================== CONTROL REQUESTS ====================
     private final MotionMagicVoltage deployRequest = new MotionMagicVoltage(0).withSlot(0);
+    private final VoltageOut rightDeployRequest = new VoltageOut(0);
     // Roller runs open-loop duty cycle — 50Hz control frame is plenty (default is 100Hz).
     private final DutyCycleOut rollerRequest = new DutyCycleOut(0).withUpdateFreqHz(50);
+
+    // ==================== GRAVITY FEEDFORWARD LOOKUP TABLES ====================
+    // Non-linear gravity compensation for the slapdown linkage.
+    // The passive flap changes effective torque at each arm position.
+    private final InterpolatingDoubleTreeMap leftGravityTable = new InterpolatingDoubleTreeMap();
+    private final InterpolatingDoubleTreeMap rightGravityTable = new InterpolatingDoubleTreeMap();
 
     // ==================== STATE ====================
     private DeployState deployState = DeployState.STOWED;
 
     // ==================== HEALTH / CURRENT MONITORING ====================
-    private final StatusSignal<Current> deployCurrentSignal;
+    private final StatusSignal<Current> leftDeployCurrentSignal;
+    private final StatusSignal<Current> rightDeployCurrentSignal;
     private final StatusSignal<Angle> deployPositionSignal;
+    private final StatusSignal<Voltage> leftDeployOutputSignal;
     private int deployStallCycleCount = 0;
     private boolean healthy = true;
     private static final int kMaxConfigRetries = 5;
@@ -97,17 +106,32 @@ public class Intake extends SubsystemBase {
         rightDeployMotor = new TalonFX(IntakeConstants.kRightDeployMotorId);
         rollerMotor = new TalonFX(IntakeConstants.kRollerMotorId);
 
+        // Populate gravity feedforward lookup tables
+        for (double[] entry : IntakeConstants.kDeployLeftGravityTable) {
+            leftGravityTable.put(entry[0], entry[1]);
+        }
+        for (double[] entry : IntakeConstants.kDeployRightGravityTable) {
+            rightGravityTable.put(entry[0], entry[1]);
+        }
+
         configureDeployMotors();
         configureRollerMotor();
 
         // Cache deploy current for stall detection (10Hz is sufficient for stall counting)
-        deployCurrentSignal = leftDeployMotor.getStatorCurrent();
-        deployCurrentSignal.setUpdateFrequency(10);
+        leftDeployCurrentSignal = leftDeployMotor.getStatorCurrent();
+        leftDeployCurrentSignal.setUpdateFrequency(10);
+        rightDeployCurrentSignal = rightDeployMotor.getStatorCurrent();
+        rightDeployCurrentSignal.setUpdateFrequency(10);
 
         // Cache deploy position signal — avoid synchronous CAN read in getDeployPosition()
         // 30Hz — deploy arm is slow but needs reasonable feedback for Motion Magic.
         deployPositionSignal = leftDeployMotor.getPosition();
         deployPositionSignal.setUpdateFrequency(30);
+
+        // Cache left motor's closed-loop output so we can mirror it to the right motor
+        // 50Hz matches the robot loop rate
+        leftDeployOutputSignal = leftDeployMotor.getMotorVoltage();
+        leftDeployOutputSignal.setUpdateFrequency(50);
 
         leftDeployMotor.optimizeBusUtilization();
         rightDeployMotor.optimizeBusUtilization();
@@ -129,17 +153,16 @@ public class Intake extends SubsystemBase {
 
     private void configureDeployMotors() {
         // ---- Left deploy motor (LEADER) ----
-        // The left motor runs the PID + Motion Magic + gravity compensation.
-        // kG is tuned for the total arm weight (including roller on the right side).
-        // The PID sees the arm position and outputs whatever voltage is needed —
-        // the follower mirrors it, so both motors share the load equally.
+        // The left motor runs PID + Motion Magic. Gravity compensation is NOT
+        // handled by CTRE's built-in kG (Arm_Cosine doesn't match our slapdown
+        // linkage torque profile). Instead, we inject gravity feedforward via
+        // the lookup table as an arbitrary feedforward voltage each cycle.
         TalonFXConfiguration config = new TalonFXConfiguration();
 
         config.Slot0.kP = IntakeConstants.kDeployP;
         config.Slot0.kI = IntakeConstants.kDeployI;
         config.Slot0.kD = IntakeConstants.kDeployD;
-        config.Slot0.kG = IntakeConstants.kDeployG;
-        config.Slot0.GravityType = GravityTypeValue.Arm_Cosine;
+        config.Slot0.kG = 0.0; // gravity handled externally via lookup table
 
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
         config.CurrentLimits.SupplyCurrentLimit = IntakeConstants.kDeployCurrentLimit;
@@ -161,20 +184,19 @@ public class Intake extends SubsystemBase {
         applyConfig(() -> leftDeployMotor.getConfigurator().apply(config), "Left Deploy");
         leftDeployMotor.setPosition(IntakeConstants.kDeployStowedRotations);
 
-        // ---- Right deploy motor (FOLLOWER) ----
-        // Mirrors the left motor's output in opposed direction (mirror-mounted).
-        // No PID of its own — just copies the leader's voltage output.
-        // This avoids two independent controllers fighting over one rigid arm.
+        // ---- Right deploy motor (VOLTAGE MIRROR + EXTRA GRAVITY) ----
+        // Not a follower — each cycle we read the left motor's output voltage
+        // and send it to the right motor with an extra gravity offset.
+        // This gives asymmetric gravity compensation without two fighting PIDs.
         TalonFXConfiguration rightConfig = new TalonFXConfiguration();
         rightConfig.SoftwareLimitSwitch.ReverseSoftLimitEnable = false;
         rightConfig.SoftwareLimitSwitch.ForwardSoftLimitEnable = false;
         rightConfig.CurrentLimits.SupplyCurrentLimitEnable = true;
         rightConfig.CurrentLimits.SupplyCurrentLimit = IntakeConstants.kDeployCurrentLimit;
         rightConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        rightConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive; // opposed to left
         applyConfig(() -> rightDeployMotor.getConfigurator().apply(rightConfig), "Right Deploy");
         rightDeployMotor.setPosition(IntakeConstants.kDeployStowedRotations);
-        rightDeployMotor.setControl(
-                new Follower(IntakeConstants.kLeftDeployMotorId, MotorAlignmentValue.Opposed));
     }
 
     private void configureRollerMotor() {
@@ -194,8 +216,29 @@ public class Intake extends SubsystemBase {
     @Override
     public void periodic() {
         // ---- Refresh cached status signals ONCE per cycle ----
-        com.ctre.phoenix6.BaseStatusSignal.refreshAll(deployCurrentSignal, deployPositionSignal);
-        double deployCurrent = deployCurrentSignal.getValueAsDouble();
+        com.ctre.phoenix6.BaseStatusSignal.refreshAll(
+                leftDeployCurrentSignal, rightDeployCurrentSignal,
+                deployPositionSignal, leftDeployOutputSignal);
+
+        double armPosition = deployPositionSignal.getValueAsDouble();
+
+        // ---- Update left motor gravity FF (runs every cycle so FF tracks arm position) ----
+        double leftGravityFF = leftGravityTable.get(armPosition);
+        leftDeployMotor.setControl(deployRequest.withFeedForward(leftGravityFF));
+
+        // ---- Right motor: mirror left PID output + right-side gravity from lookup ----
+        // leftOutputVolts already includes the left gravity FF + PID correction.
+        // We subtract the left gravity FF to get the pure PID portion,
+        // then add the right-side gravity FF (which is higher due to extra weight).
+        double leftOutputVolts = leftDeployOutputSignal.getValueAsDouble();
+        double rightGravityFF = rightGravityTable.get(armPosition);
+        double pidOutput = leftOutputVolts - leftGravityFF;
+        rightDeployMotor.setControl(
+                rightDeployRequest.withOutput(pidOutput + rightGravityFF));
+
+        double deployCurrent = Math.max(
+                leftDeployCurrentSignal.getValueAsDouble(),
+                rightDeployCurrentSignal.getValueAsDouble());
         if (deployState != DeployState.STOWED && !isDeployAtTarget()) {
             if (deployCurrent > IntakeConstants.kDeployStallCurrentThreshold) {
                 deployStallCycleCount++;
@@ -217,7 +260,11 @@ public class Intake extends SubsystemBase {
         Logger.recordOutput("Intake/DeployPosition", getDeployPosition());
         Logger.recordOutput("Intake/DeployAtTarget", isDeployAtTarget());
         Logger.recordOutput("Intake/RollerOutput", rollerMotor.get());
-        Logger.recordOutput("Intake/DeployCurrent", deployCurrent);
+        Logger.recordOutput("Intake/LeftDeployCurrent", leftDeployCurrentSignal.getValueAsDouble());
+        Logger.recordOutput("Intake/RightDeployCurrent", rightDeployCurrentSignal.getValueAsDouble());
+        Logger.recordOutput("Intake/LeftGravityFF", leftGravityFF);
+        Logger.recordOutput("Intake/RightGravityFF", rightGravityFF);
+        Logger.recordOutput("Intake/PIDOutput", pidOutput);
 
         RobotState.getInstance().setIntakeHealthy(healthy);
     }
@@ -227,22 +274,27 @@ public class Intake extends SubsystemBase {
     /** Deploy the intake arm past the bumpers to collect balls. */
     public void deploy() {
         deployState = DeployState.DEPLOYED;
-        leftDeployMotor.setControl(
-                deployRequest.withPosition(IntakeConstants.kDeployExtendedRotations));
+        setDeployTarget(IntakeConstants.kDeployExtendedRotations);
     }
 
     /** Retract the intake arm inside the bumpers. */
     public void stow() {
         deployState = DeployState.STOWED;
-        leftDeployMotor.setControl(
-                deployRequest.withPosition(IntakeConstants.kDeployStowedRotations));
+        setDeployTarget(IntakeConstants.kDeployStowedRotations);
     }
 
     /** Partial deploy — arm just past bumper line (hover position). */
     public void hover() {
         deployState = DeployState.HOVER;
+        setDeployTarget(IntakeConstants.kDeployHoverRotations);
+    }
+
+    /** Send position target to the left motor with gravity FF from lookup table. */
+    private void setDeployTarget(double positionRotations) {
+        double currentPos = deployPositionSignal.getValueAsDouble();
+        double leftGravityFF = leftGravityTable.get(currentPos);
         leftDeployMotor.setControl(
-                deployRequest.withPosition(IntakeConstants.kDeployHoverRotations));
+                deployRequest.withPosition(positionRotations).withFeedForward(leftGravityFF));
     }
 
     /** @return current deploy arm position in mechanism rotations */

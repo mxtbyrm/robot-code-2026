@@ -614,11 +614,37 @@ public final class Constants {
         public static final double kDeployHoverRotations =
                 kDeployExtendedRotations / 2.0;
 
-        // Deploy PID (position control with gravity compensation)
+        // Deploy PID (position control — gravity handled via lookup tables, NOT Arm_Cosine)
         public static final double kDeployP = 40.0;
         public static final double kDeployI = 0.0;
         public static final double kDeployD = 1.0;
-        public static final double kDeployG = 0.35; // Gravity FF (volts) — tuned for total arm weight including roller
+
+        // ==================== DEPLOY GRAVITY FEEDFORWARD LOOKUP ====================
+        // The passive linkage (free flap) creates a non-linear torque profile:
+        //   - Stowed: linkage is folded, CG is near pivot → low gravity torque
+        //   - Mid-deploy: linkage starts opening → torque ramps up
+        //   - Full deploy: linkage fully extended → maximum gravity torque
+        // A simple cosine doesn't capture this, so we use position → voltage tables.
+        // The right side carries more weight (roller/linkage mass is off-center).
+        //
+        // Format: { position (mechanism rotations), voltage (V) }
+        // Positions are negative (0 = stowed, kDeployExtendedRotations = full deploy).
+        // TODO: tune all values on the real robot using AdvantageScope current plots
+        public static final double[][] kDeployLeftGravityTable = {
+            { 0.0,                                  0.0  },  // stowed — vertical, ~zero torque
+            { kDeployExtendedRotations * 0.25,      0.10 },  // 25% deploy — linkage still folded
+            { kDeployExtendedRotations * 0.50,      0.25 },  // 50% deploy — linkage opening
+            { kDeployExtendedRotations * 0.75,      0.35 },  // 75% deploy — linkage mostly open
+            { kDeployExtendedRotations,              0.40 },  // full deploy — linkage extended, max torque
+        };
+
+        public static final double[][] kDeployRightGravityTable = {
+            { 0.0,                                  0.0  },  // stowed — vertical, ~zero torque
+            { kDeployExtendedRotations * 0.25,      0.15 },  // 25% deploy — linkage still folded
+            { kDeployExtendedRotations * 0.50,      0.35 },  // 50% deploy — linkage opening, extra weight kicks in
+            { kDeployExtendedRotations * 0.75,      0.50 },  // 75% deploy — linkage mostly open
+            { kDeployExtendedRotations,              0.60 },  // full deploy — linkage extended, max torque + extra weight
+        };
 
         // Deploy tolerance — ~6% of full deploy travel
         public static final double kDeployToleranceRotations = 0.01;
