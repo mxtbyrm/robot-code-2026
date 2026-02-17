@@ -153,22 +153,22 @@ class IntakeTest {
     void isDeployAtTarget_atTarget_returnsTrue() {
         double target = IntakeConstants.kDeployExtendedRotations;
         double position = target + IntakeConstants.kDeployToleranceRotations * 0.5;
-        assertTrue(Math.abs(position - target) < IntakeConstants.kDeployToleranceRotations);
+        assertTrue(Math.abs(position - target) <= IntakeConstants.kDeployToleranceRotations);
     }
 
     @Test
     void isDeployAtTarget_outsideTolerance_returnsFalse() {
         double target = IntakeConstants.kDeployExtendedRotations;
         double position = target + IntakeConstants.kDeployToleranceRotations * 2.0;
-        assertFalse(Math.abs(position - target) < IntakeConstants.kDeployToleranceRotations);
+        assertFalse(Math.abs(position - target) <= IntakeConstants.kDeployToleranceRotations);
     }
 
     @Test
-    void isDeployAtTarget_atBoundary_returnsFalse() {
+    void isDeployAtTarget_atBoundary_accepted() {
         double target = IntakeConstants.kDeployExtendedRotations;
         double position = target + IntakeConstants.kDeployToleranceRotations; // exactly at tolerance
-        assertFalse(Math.abs(position - target) < IntakeConstants.kDeployToleranceRotations,
-                "At exactly the tolerance boundary, should return false (strict <)");
+        assertTrue(Math.abs(position - target) <= IntakeConstants.kDeployToleranceRotations,
+                "At exactly the tolerance boundary, should be accepted (<=)");
     }
 
     // ==================== STALL DETECTION LOGIC ====================
