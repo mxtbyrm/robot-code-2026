@@ -28,10 +28,49 @@ class SuperstructureTest {
      */
     private SuperState resolveShootRequest(SuperState current) {
         if (current == SuperState.DISABLED) return current; // blocked
-        if (current == SuperState.SHOOTING || current == SuperState.PRE_FEED_REVERSE) {
+        if (current == SuperState.SHOOTING || current == SuperState.SHOOTING_WHILE_INTAKING
+                || current == SuperState.PRE_FEED_REVERSE) {
+            if (current == SuperState.SHOOTING_WHILE_INTAKING) {
+                return SuperState.SHOOTING_WHILE_INTAKING;
+            }
             return SuperState.SHOOTING; // skip pre-feed
         }
+        if (current == SuperState.INTAKING) {
+            return SuperState.PRE_FEED_REVERSE; // will go to SHOOTING_WHILE_INTAKING after reverse
+        }
         return SuperState.PRE_FEED_REVERSE; // go through pre-feed first
+    }
+
+    /**
+     * Mirrors Superstructure.requestIntake() logic.
+     */
+    private SuperState resolveIntakeRequest(SuperState current) {
+        if (current == SuperState.DISABLED) return current;
+        if (current == SuperState.SHOOTING || current == SuperState.SHOOTING_WHILE_INTAKING
+                || current == SuperState.PRE_FEED_REVERSE) {
+            return SuperState.SHOOTING_WHILE_INTAKING;
+        }
+        return SuperState.INTAKING;
+    }
+
+    /**
+     * Mirrors Superstructure.requestStopShooting() logic.
+     */
+    private SuperState resolveStopShooting(SuperState current) {
+        if (current == SuperState.SHOOTING_WHILE_INTAKING) {
+            return SuperState.INTAKING;
+        }
+        return SuperState.IDLE;
+    }
+
+    /**
+     * Mirrors Superstructure.requestStopIntaking() logic.
+     */
+    private SuperState resolveStopIntaking(SuperState current) {
+        if (current == SuperState.SHOOTING_WHILE_INTAKING) {
+            return SuperState.SHOOTING;
+        }
+        return SuperState.IDLE;
     }
 
     /**
@@ -48,9 +87,9 @@ class SuperstructureTest {
     // ==================== ALL 8 STATES EXIST ====================
 
     @Test
-    void allStates_enumHasEightValues() {
-        assertEquals(8, SuperState.values().length,
-                "SuperState should have exactly 8 values");
+    void allStates_enumHasNineValues() {
+        assertEquals(9, SuperState.values().length,
+                "SuperState should have exactly 9 values");
     }
 
     @Test
@@ -63,6 +102,7 @@ class SuperstructureTest {
         assertNotNull(SuperState.valueOf("OUTTAKING"));
         assertNotNull(SuperState.valueOf("UNJAMMING"));
         assertNotNull(SuperState.valueOf("DISABLED"));
+        assertNotNull(SuperState.valueOf("SHOOTING_WHILE_INTAKING"));
     }
 
     // ==================== VALID TRANSITIONS ====================
@@ -303,5 +343,135 @@ class SuperstructureTest {
     @Test
     void allianceShoot_disabled_blocked() {
         assertEquals(SuperState.DISABLED, resolveAllianceShootRequest(SuperState.DISABLED));
+    }
+
+    // ==================== SHOOTING WHILE INTAKING ====================
+
+    @Test
+    void intaking_shootRequest_goesThruPreFeed() {
+        SuperState result = resolveShootRequest(SuperState.INTAKING);
+        assertEquals(SuperState.PRE_FEED_REVERSE, result,
+                "INTAKING → shoot should go through PRE_FEED_REVERSE (then to SHOOTING_WHILE_INTAKING)");
+    }
+
+    @Test
+    void shooting_intakeRequest_goesToShootingWhileIntaking() {
+        SuperState result = resolveIntakeRequest(SuperState.SHOOTING);
+        assertEquals(SuperState.SHOOTING_WHILE_INTAKING, result,
+                "SHOOTING + intake request should go to SHOOTING_WHILE_INTAKING");
+    }
+
+    @Test
+    void preFeedReverse_intakeRequest_goesToShootingWhileIntaking() {
+        SuperState result = resolveIntakeRequest(SuperState.PRE_FEED_REVERSE);
+        assertEquals(SuperState.SHOOTING_WHILE_INTAKING, result,
+                "PRE_FEED_REVERSE + intake request should go to SHOOTING_WHILE_INTAKING");
+    }
+
+    @Test
+    void shootingWhileIntaking_shootRequest_staysInCombinedState() {
+        SuperState result = resolveShootRequest(SuperState.SHOOTING_WHILE_INTAKING);
+        assertEquals(SuperState.SHOOTING_WHILE_INTAKING, result,
+                "SHOOTING_WHILE_INTAKING + shoot request should stay combined");
+    }
+
+    @Test
+    void shootingWhileIntaking_intakeRequest_staysInCombinedState() {
+        SuperState result = resolveIntakeRequest(SuperState.SHOOTING_WHILE_INTAKING);
+        assertEquals(SuperState.SHOOTING_WHILE_INTAKING, result,
+                "SHOOTING_WHILE_INTAKING + intake request should stay combined");
+    }
+
+    @Test
+    void idle_intakeRequest_goesToIntaking() {
+        SuperState result = resolveIntakeRequest(SuperState.IDLE);
+        assertEquals(SuperState.INTAKING, result,
+                "IDLE + intake request should go to INTAKING");
+    }
+
+    @Test
+    void disabled_intakeRequest_blocked() {
+        SuperState result = resolveIntakeRequest(SuperState.DISABLED);
+        assertEquals(SuperState.DISABLED, result,
+                "Intake request from DISABLED should stay DISABLED");
+    }
+
+    // ==================== STOP SHOOTING / STOP INTAKING ====================
+
+    @Test
+    void stopShooting_fromCombined_goesToIntaking() {
+        SuperState result = resolveStopShooting(SuperState.SHOOTING_WHILE_INTAKING);
+        assertEquals(SuperState.INTAKING, result,
+                "Stop shooting from SHOOTING_WHILE_INTAKING should go to INTAKING");
+    }
+
+    @Test
+    void stopShooting_fromShooting_goesToIdle() {
+        SuperState result = resolveStopShooting(SuperState.SHOOTING);
+        assertEquals(SuperState.IDLE, result,
+                "Stop shooting from SHOOTING should go to IDLE");
+    }
+
+    @Test
+    void stopIntaking_fromCombined_goesToShooting() {
+        SuperState result = resolveStopIntaking(SuperState.SHOOTING_WHILE_INTAKING);
+        assertEquals(SuperState.SHOOTING, result,
+                "Stop intaking from SHOOTING_WHILE_INTAKING should go to SHOOTING");
+    }
+
+    @Test
+    void stopIntaking_fromIntaking_goesToIdle() {
+        SuperState result = resolveStopIntaking(SuperState.INTAKING);
+        assertEquals(SuperState.IDLE, result,
+                "Stop intaking from INTAKING should go to IDLE");
+    }
+
+    // ==================== isShooting / isIntaking ====================
+
+    /**
+     * Mirrors Superstructure.isShooting() logic.
+     */
+    private boolean isShooting(SuperState state) {
+        return state == SuperState.SHOOTING || state == SuperState.SHOOTING_ALLIANCE
+                || state == SuperState.PRE_FEED_REVERSE || state == SuperState.SHOOTING_WHILE_INTAKING;
+    }
+
+    /**
+     * Mirrors Superstructure.isIntaking() logic.
+     */
+    private boolean isIntaking(SuperState state) {
+        return state == SuperState.INTAKING || state == SuperState.SHOOTING_WHILE_INTAKING;
+    }
+
+    @Test
+    void isShooting_trueForShootingWhileIntaking() {
+        assertTrue(isShooting(SuperState.SHOOTING_WHILE_INTAKING),
+                "SHOOTING_WHILE_INTAKING should count as shooting");
+    }
+
+    @Test
+    void isIntaking_trueForShootingWhileIntaking() {
+        assertTrue(isIntaking(SuperState.SHOOTING_WHILE_INTAKING),
+                "SHOOTING_WHILE_INTAKING should count as intaking");
+    }
+
+    @Test
+    void isShooting_trueForShooting() {
+        assertTrue(isShooting(SuperState.SHOOTING), "SHOOTING should count as shooting");
+    }
+
+    @Test
+    void isIntaking_falseForShooting() {
+        assertFalse(isIntaking(SuperState.SHOOTING), "SHOOTING should not count as intaking");
+    }
+
+    @Test
+    void isShooting_falseForIntaking() {
+        assertFalse(isShooting(SuperState.INTAKING), "INTAKING should not count as shooting");
+    }
+
+    @Test
+    void isIntaking_trueForIntaking() {
+        assertTrue(isIntaking(SuperState.INTAKING), "INTAKING should count as intaking");
     }
 }

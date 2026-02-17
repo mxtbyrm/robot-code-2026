@@ -74,6 +74,8 @@ public class Superstructure extends SubsystemBase {
         SHOOTING,
         /** Alliance zone dump: fixed shot to lob FUEL into alliance zone. */
         SHOOTING_ALLIANCE,
+        /** Simultaneous intake + shooting: intake rollers run while feeder+spindexer feed shooter. */
+        SHOOTING_WHILE_INTAKING,
         /** Outtaking: intake deploys + reverses, spindexer reverses. */
         OUTTAKING,
         /** All motors reverse to clear a jam. */
@@ -150,6 +152,9 @@ public class Superstructure extends SubsystemBase {
             case SHOOTING_ALLIANCE:
                 executeShootingAlliance();
                 break;
+            case SHOOTING_WHILE_INTAKING:
+                executeShootingWhileIntaking();
+                break;
             case OUTTAKING:
                 executeOuttaking();
                 break;
@@ -187,7 +192,7 @@ public class Superstructure extends SubsystemBase {
         }
 
         // ---- Vision distance validation (when shooting) ----
-        if (vision != null && currentState == SuperState.SHOOTING && shooter.isTrackingEnabled()) {
+        if (vision != null && (currentState == SuperState.SHOOTING || currentState == SuperState.SHOOTING_WHILE_INTAKING) && shooter.isTrackingEnabled()) {
             vision.validateDistance(shooter.getDistanceToHub());
         }
 
@@ -218,6 +223,12 @@ public class Superstructure extends SubsystemBase {
             case PRE_FEED_REVERSE:
             case SHOOTING:
             case SHOOTING_ALLIANCE:
+                feeder.cancelFeed();
+                feeder.stop();
+                spindexer.stop();
+                break;
+            case SHOOTING_WHILE_INTAKING:
+                intake.stopRoller();
                 feeder.cancelFeed();
                 feeder.stop();
                 spindexer.stop();
@@ -255,6 +266,13 @@ public class Superstructure extends SubsystemBase {
                 spindexer.setSpeed(computeSpindexerFeedSpeed());
                 break;
             case SHOOTING_ALLIANCE:
+                feeder.requestFeed();
+                spindexer.setSpeed(computeSpindexerFeedSpeed());
+                break;
+            case SHOOTING_WHILE_INTAKING:
+                if (intakeArmDeployed) {
+                    intake.runRollerIntake();
+                }
                 feeder.requestFeed();
                 spindexer.setSpeed(computeSpindexerFeedSpeed());
                 break;
@@ -344,6 +362,35 @@ public class Superstructure extends SubsystemBase {
         Logger.recordOutput("Super/HubNextShift", hub.getTimeUntilNextShift());
     }
 
+    private void executeShootingWhileIntaking() {
+        // Intake roller control — same as executeIntaking()
+        if (intakeArmDeployed) {
+            intake.runRollerIntake();
+        } else {
+            intake.stopRoller();
+        }
+
+        // Feeding logic — same as executeShooting()
+        HubStateTracker hub = HubStateTracker.getInstance();
+        boolean hubAllowsShoot = hub.shouldShoot();
+
+        if (hubAllowsShoot) {
+            if (!feeder.isFeedRequested()) {
+                feeder.requestFeed();
+            }
+            spindexer.setSpeed(computeSpindexerFeedSpeed());
+        } else {
+            if (feeder.isFeedRequested()) {
+                feeder.cancelFeed();
+                spindexer.stop();
+            }
+        }
+
+        Logger.recordOutput("Super/HubActive", hub.isHubActive());
+        Logger.recordOutput("Super/HubShouldShoot", hubAllowsShoot);
+        Logger.recordOutput("Super/HubNextShift", hub.getTimeUntilNextShift());
+    }
+
     private void executeShootingAlliance() {
         // Alliance zone dump — shooter uses fixed parameters (no auto-aim).
         // Feeder and spindexer are running (set in transitionTo).
@@ -414,19 +461,35 @@ public class Superstructure extends SubsystemBase {
         return intakeArmDeployed;
     }
 
-    /** Request intake mode. */
+    /** Request intake mode. If currently shooting, transitions to SHOOTING_WHILE_INTAKING. */
     public void requestIntake() {
         if (currentState != SuperState.DISABLED) {
-            requestedState = SuperState.INTAKING;
+            if (currentState == SuperState.SHOOTING || currentState == SuperState.SHOOTING_WHILE_INTAKING
+                    || currentState == SuperState.PRE_FEED_REVERSE) {
+                requestedState = SuperState.SHOOTING_WHILE_INTAKING;
+            } else {
+                requestedState = SuperState.INTAKING;
+            }
         }
     }
 
-    /** Request shooting mode. Goes through pre-feed reverse first to prevent jams. */
+    /** Request shooting mode. Goes through pre-feed reverse first to prevent jams.
+     *  If currently intaking, transitions to SHOOTING_WHILE_INTAKING to keep intake running. */
     public void requestShoot() {
         if (currentState != SuperState.DISABLED) {
             // Skip pre-feed reverse if already shooting or in pre-feed reverse
-            if (currentState == SuperState.SHOOTING || currentState == SuperState.PRE_FEED_REVERSE) {
-                requestedState = SuperState.SHOOTING;
+            if (currentState == SuperState.SHOOTING || currentState == SuperState.SHOOTING_WHILE_INTAKING
+                    || currentState == SuperState.PRE_FEED_REVERSE) {
+                // Keep combined state if already in it
+                if (currentState == SuperState.SHOOTING_WHILE_INTAKING) {
+                    requestedState = SuperState.SHOOTING_WHILE_INTAKING;
+                } else {
+                    requestedState = SuperState.SHOOTING;
+                }
+            } else if (currentState == SuperState.INTAKING) {
+                // Currently intaking — shoot while keeping intake running
+                postReverseShotState = SuperState.SHOOTING_WHILE_INTAKING;
+                requestedState = SuperState.PRE_FEED_REVERSE;
             } else {
                 postReverseShotState = SuperState.SHOOTING;
                 requestedState = SuperState.PRE_FEED_REVERSE;
@@ -457,6 +520,24 @@ public class Superstructure extends SubsystemBase {
     public void requestUnjam() {
         if (currentState != SuperState.DISABLED) {
             requestedState = SuperState.UNJAMMING;
+        }
+    }
+
+    /** Stop shooting but keep intaking if in combined state. Otherwise go to idle. */
+    public void requestStopShooting() {
+        if (currentState == SuperState.SHOOTING_WHILE_INTAKING) {
+            requestedState = SuperState.INTAKING;
+        } else {
+            requestIdle();
+        }
+    }
+
+    /** Stop intaking but keep shooting if in combined state. Otherwise go to idle. */
+    public void requestStopIntaking() {
+        if (currentState == SuperState.SHOOTING_WHILE_INTAKING) {
+            requestedState = SuperState.SHOOTING;
+        } else {
+            requestIdle();
         }
     }
 
@@ -516,11 +597,11 @@ public class Superstructure extends SubsystemBase {
 
     public boolean isShooting() {
         return currentState == SuperState.SHOOTING || currentState == SuperState.SHOOTING_ALLIANCE
-                || currentState == SuperState.PRE_FEED_REVERSE;
+                || currentState == SuperState.PRE_FEED_REVERSE || currentState == SuperState.SHOOTING_WHILE_INTAKING;
     }
 
     public boolean isIntaking() {
-        return currentState == SuperState.INTAKING;
+        return currentState == SuperState.INTAKING || currentState == SuperState.SHOOTING_WHILE_INTAKING;
     }
 
     // ==================== COMMAND FACTORIES ====================
@@ -533,8 +614,8 @@ public class Superstructure extends SubsystemBase {
     public Command intakeRollerCommand() {
         return Commands.startEnd(
                 this::requestIntake,
-                this::requestIdle,
-                this, intake, spindexer, feeder
+                this::requestStopIntaking,
+                this, intake
         ).withName("Super: Intake Rollers");
     }
 
@@ -546,8 +627,8 @@ public class Superstructure extends SubsystemBase {
     public Command shootCommand() {
         return Commands.startEnd(
                 this::requestShoot,
-                this::requestIdle,
-                this, intake, spindexer, feeder
+                this::requestStopShooting,
+                this, spindexer, feeder
         ).withName("Super: Shoot");
     }
 
