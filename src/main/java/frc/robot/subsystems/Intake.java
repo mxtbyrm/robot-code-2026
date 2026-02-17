@@ -162,6 +162,7 @@ public class Intake extends SubsystemBase {
         config.Slot0.kP = IntakeConstants.kDeployP;
         config.Slot0.kI = IntakeConstants.kDeployI;
         config.Slot0.kD = IntakeConstants.kDeployD;
+        config.Slot0.kS = IntakeConstants.kDeployS;
         config.Slot0.kG = 0.0; // gravity handled externally via lookup table
 
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
@@ -226,10 +227,10 @@ public class Intake extends SubsystemBase {
         double leftGravityFF = leftGravityTable.get(armPosition);
         leftDeployMotor.setControl(deployRequest.withFeedForward(leftGravityFF));
 
-        // ---- Right motor: mirror left PID output + right-side gravity from lookup ----
-        // leftOutputVolts already includes the left gravity FF + PID correction.
-        // We subtract the left gravity FF to get the pure PID portion,
-        // then add the right-side gravity FF (which is higher due to extra weight).
+        // ---- Right motor: mirror left PID output + right-side gravity ----
+        // leftOutputVolts includes PID + kS + left gravity FF.
+        // Subtract left gravity FF → leaves PID + kS (kS carries over naturally).
+        // Add right gravity FF → right motor gets same PID + kS + its own gravity.
         double leftOutputVolts = leftDeployOutputSignal.getValueAsDouble();
         double rightGravityFF = rightGravityTable.get(armPosition);
         double pidOutput = leftOutputVolts - leftGravityFF;

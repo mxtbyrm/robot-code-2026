@@ -618,6 +618,8 @@ public final class Constants {
         public static final double kDeployP = 40.0;
         public static final double kDeployI = 0.0;
         public static final double kDeployD = 1.0;
+        public static final double kDeployS = 0.12; // Static friction FF (volts) — minimum voltage to overcome friction
+        // TODO: tune with SysId or by slowly increasing voltage until the arm just starts to move
 
         // ==================== DEPLOY GRAVITY FEEDFORWARD LOOKUP ====================
         // The passive linkage (free flap) creates a non-linear torque profile:
