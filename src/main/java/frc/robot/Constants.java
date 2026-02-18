@@ -58,9 +58,9 @@ public final class Constants {
         // ==================== CHASSIS DIMENSIONS ====================
         // Distance between centers of left and right modules (track width)
         // Distance between centers of front and back modules (wheelbase)
-        // Adjust these to your robot's actual measurements!
-        public static final double kTrackWidthMeters = Units.inchesToMeters(22.75);
-        public static final double kWheelBaseMeters = Units.inchesToMeters(22.75);
+        // Values are set in RobotConfig.java — edit there for new robot deployments.
+        public static final double kTrackWidthMeters = RobotConfig.kTrackWidthMeters;
+        public static final double kWheelBaseMeters = RobotConfig.kWheelBaseMeters;
 
         // Distance from robot center to the furthest module
         public static final double kDriveBaseRadiusMeters =
@@ -170,25 +170,25 @@ public final class Constants {
         public static final int kFrontLeftDriveMotorId = 1;
         public static final int kFrontLeftSteerMotorId = 2;
         public static final int kFrontLeftEncoderId = 3;
-        public static final double kFrontLeftEncoderOffset = 0.0; // rotations — calibrate!
+        public static final double kFrontLeftEncoderOffset = RobotConfig.kFrontLeftEncoderOffset;
 
         // Front Right Module
         public static final int kFrontRightDriveMotorId = 4;
         public static final int kFrontRightSteerMotorId = 5;
         public static final int kFrontRightEncoderId = 6;
-        public static final double kFrontRightEncoderOffset = 0.0; // rotations — calibrate!
+        public static final double kFrontRightEncoderOffset = RobotConfig.kFrontRightEncoderOffset;
 
         // Back Left Module
         public static final int kBackLeftDriveMotorId = 7;
         public static final int kBackLeftSteerMotorId = 8;
         public static final int kBackLeftEncoderId = 9;
-        public static final double kBackLeftEncoderOffset = 0.0; // rotations — calibrate!
+        public static final double kBackLeftEncoderOffset = RobotConfig.kBackLeftEncoderOffset;
 
         // Back Right Module
         public static final int kBackRightDriveMotorId = 10;
         public static final int kBackRightSteerMotorId = 11;
         public static final int kBackRightEncoderId = 12;
-        public static final double kBackRightEncoderOffset = 0.0; // rotations — calibrate!
+        public static final double kBackRightEncoderOffset = RobotConfig.kBackRightEncoderOffset;
     }
 
     // ==================== HUB — FIELD STRUCTURE CONSTANTS ====================
@@ -357,13 +357,19 @@ public final class Constants {
         public static final double kMaxShootingDistanceMeters = 6.5;
         // Turret angular offset — compensate for turret not being exactly centered on robot (degrees)
         // Positive = turret is offset counterclockwise from robot forward. Set to 0 if centered.
-        public static final double kTurretMountOffsetDegrees = 0.0;
+        // Value set in RobotConfig.java — edit there for new robot deployments.
+        public static final double kTurretMountOffsetDegrees = RobotConfig.kTurretMountOffsetDegrees;
 
         // ==================== SHOOTER GEOMETRY (measured on robot) ====================
+        // Position of the shooter exit point in robot frame (X=forward, Y=left).
+        // Rotated by robot heading each cycle to get the field-frame shooter position.
+        // Value set in RobotConfig.java — edit there for new robot deployments.
+        public static final Translation2d kShooterPositionOffset = RobotConfig.kShooterPositionOffset;
+
         // Height of ball exit point above the floor. Measure from carpet to the
         // point where the ball leaves the flywheel gap.
-        // TODO: measure on real robot
-        public static final double kShooterExitHeightMeters = Units.inchesToMeters(24.0);
+        // Value set in RobotConfig.java — edit there for new robot deployments.
+        public static final double kShooterExitHeightMeters = RobotConfig.kShooterExitHeightMeters;
 
         // ==================== BALL-FLYWHEEL EFFICIENCY ====================
         // Ratio of actual ball exit speed to flywheel surface speed.
@@ -511,10 +517,9 @@ public final class Constants {
         public static final double kHoodMinAngleDegrees = 27.5;
         public static final double kHoodMaxAngleDegrees = 42.5;
 
-        // TODO: move hood to min (most open), read Kraken motor encoder value
-        private static final double kHoodMinMotorRotations = 0.0; // placeholder
-        // TODO: move hood to max (most closed), read Kraken motor encoder value
-        private static final double kHoodMaxMotorRotations = 0.0; // placeholder
+        // Values set in RobotConfig.java — edit there for new robot deployments.
+        private static final double kHoodMinMotorRotations = RobotConfig.kHoodMinMotorRotations;
+        private static final double kHoodMaxMotorRotations = RobotConfig.kHoodMaxMotorRotations;
 
         // Hood positions in mechanism rotations (for motor controller)
         public static final double kHoodMinRotations = kHoodMinMotorRotations / kHoodGearRatio;
@@ -541,18 +546,17 @@ public final class Constants {
 
         // ==================== TURRET CONSTANTS ====================
         // Turret gear ratio: motor rotations per mechanism rotation
-        // TODO: measure and set actual gear ratio
-        public static final double kTurretGearRatio = 100.0; // placeholder
+        // Value set in RobotConfig.java — edit there for new robot deployments.
+        public static final double kTurretGearRatio = RobotConfig.kTurretGearRatio;
 
         // Turret rotation limits (degrees from center / forward)
         // Narrowed from ±180° to ±175° to prevent oscillation at the wrap boundary.
         public static final double kTurretMinAngleDegrees = -175.0;
         public static final double kTurretMaxAngleDegrees = 175.0;
 
-        // TODO: move turret to CCW hard stop, read Kraken motor encoder value
-        private static final double kTurretCCWLimitMotorRotations = 0.0; // placeholder
-        // TODO: move turret to CW hard stop, read Kraken motor encoder value
-        private static final double kTurretCWLimitMotorRotations = 0.0; // placeholder
+        // Values set in RobotConfig.java — edit there for new robot deployments.
+        private static final double kTurretCCWLimitMotorRotations = RobotConfig.kTurretCCWLimitMotorRotations;
+        private static final double kTurretCWLimitMotorRotations = RobotConfig.kTurretCWLimitMotorRotations;
 
         // Turret positions in mechanism rotations (for motor controller)
         // Derived from the two hard stop measurements and gear ratio

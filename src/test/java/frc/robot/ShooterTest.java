@@ -1,6 +1,7 @@
 package frc.robot;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 
@@ -51,22 +52,46 @@ class ShooterTest {
     /**
      * Replicate the shoot-while-moving logic from Shooter.updateHubCalculations().
      * Returns [compensatedDistance, compensatedTurretAngleDeg, flywheelCompensationRPS].
+     *
+     * @param robotPos       Robot odometry center in field frame
+     * @param robotHeadingRad Robot heading in radians
+     * @param vxMPS          Field-relative X velocity (m/s)
+     * @param vyMPS          Field-relative Y velocity (m/s)
+     * @param hubPos         Hub position in field frame
+     * @param shooterOffset  Shooter position offset in robot frame (X=forward, Y=left)
+     * @param omegaRadPerSec Robot angular velocity (rad/s, CCW positive)
      */
     private double[] computeShootWhileMoving(
             Translation2d robotPos, double robotHeadingRad,
-            double vxMPS, double vyMPS, Translation2d hubPos) {
+            double vxMPS, double vyMPS, Translation2d hubPos,
+            Translation2d shooterOffset, double omegaRadPerSec) {
 
-        Translation2d robotToHub = hubPos.minus(robotPos);
-        double distanceToHub = robotToHub.getNorm();
+        // Rotate shooter offset into field frame
+        Translation2d shooterOffsetField = shooterOffset.rotateBy(new Rotation2d(robotHeadingRad));
+        Translation2d shooterPos = robotPos.plus(shooterOffsetField);
+
+        Translation2d shooterToHub = hubPos.minus(shooterPos);
+        double distanceToHub = shooterToHub.getNorm();
 
         // Distance-based time-of-flight
         double tof = timeOfFlightTable.get(distanceToHub);
 
-        double futureX = robotPos.getX() + vxMPS * tof;
-        double futureY = robotPos.getY() + vyMPS * tof;
-        Translation2d futureRobotPos = new Translation2d(futureX, futureY);
+        // Future robot position
+        double futureRobotX = robotPos.getX() + vxMPS * tof;
+        double futureRobotY = robotPos.getY() + vyMPS * tof;
 
-        Translation2d futureToHub = hubPos.minus(futureRobotPos);
+        // Future heading (robot rotates during flight)
+        double futureHeadingRad = robotHeadingRad + omegaRadPerSec * tof;
+
+        // Future shooter offset rotated by future heading
+        Translation2d futureShooterOffset = shooterOffset.rotateBy(new Rotation2d(futureHeadingRad));
+
+        // Future shooter position in field frame
+        Translation2d futureShooterPos = new Translation2d(
+                futureRobotX + futureShooterOffset.getX(),
+                futureRobotY + futureShooterOffset.getY());
+
+        Translation2d futureToHub = hubPos.minus(futureShooterPos);
         double compensatedDistance = futureToHub.getNorm();
 
         double compensatedFieldAngle = Math.atan2(futureToHub.getY(), futureToHub.getX());
@@ -74,8 +99,12 @@ class ShooterTest {
         double compensatedTurretAngle = Math.toDegrees(MathUtil.angleModulus(compensatedTurretRad))
                 + ShooterConstants.kTurretMountOffsetDegrees;
 
-        double hubAngle = Math.atan2(robotToHub.getY(), robotToHub.getX());
-        double vTowardHub = vxMPS * Math.cos(hubAngle) + vyMPS * Math.sin(hubAngle);
+        // Shooter's true field velocity = robot velocity + ω × shooter_offset_field
+        double vShooterX = vxMPS - omegaRadPerSec * shooterOffsetField.getY();
+        double vShooterY = vyMPS + omegaRadPerSec * shooterOffsetField.getX();
+
+        double hubAngle = Math.atan2(shooterToHub.getY(), shooterToHub.getX());
+        double vTowardHub = vShooterX * Math.cos(hubAngle) + vShooterY * Math.sin(hubAngle);
         double flywheelCompensationRPS = -vTowardHub
                 / (ShooterConstants.kBottomFlywheelCircumferenceMeters
                    * ShooterConstants.kShooterEfficiencyFactor);
@@ -88,7 +117,7 @@ class ShooterTest {
         Translation2d hub = ShooterConstants.kBlueHubPosition;
         Translation2d robotPos = new Translation2d(2.0, 4.0);
 
-        double[] result = computeShootWhileMoving(robotPos, 0.0, 0.0, 0.0, hub);
+        double[] result = computeShootWhileMoving(robotPos, 0.0, 0.0, 0.0, hub, new Translation2d(), 0.0);
 
         double staticDist = hub.minus(robotPos).getNorm();
         assertEquals(staticDist, result[0], 0.01, "Compensated distance should equal static when stationary");
@@ -101,7 +130,7 @@ class ShooterTest {
         Translation2d robotPos = new Translation2d(hub.getX() + 3.0, hub.getY());
 
         // Moving toward the hub at 2 m/s
-        double[] result = computeShootWhileMoving(robotPos, 0.0, -2.0, 0.0, hub);
+        double[] result = computeShootWhileMoving(robotPos, 0.0, -2.0, 0.0, hub, new Translation2d(), 0.0);
 
         double staticDist = hub.minus(robotPos).getNorm();
         assertTrue(result[0] < staticDist,
@@ -114,7 +143,7 @@ class ShooterTest {
         Translation2d robotPos = new Translation2d(hub.getX() + 3.0, hub.getY());
 
         // Moving away from hub at 2 m/s
-        double[] result = computeShootWhileMoving(robotPos, 0.0, 2.0, 0.0, hub);
+        double[] result = computeShootWhileMoving(robotPos, 0.0, 2.0, 0.0, hub, new Translation2d(), 0.0);
 
         double staticDist = hub.minus(robotPos).getNorm();
         assertTrue(result[0] > staticDist,
@@ -128,8 +157,8 @@ class ShooterTest {
 
         // Robot facing hub, moving laterally at 2 m/s
         double headingRad = Math.atan2(hub.getY() - robotPos.getY(), hub.getX() - robotPos.getX());
-        double[] resultStatic = computeShootWhileMoving(robotPos, headingRad, 0.0, 0.0, hub);
-        double[] resultMoving = computeShootWhileMoving(robotPos, headingRad, 0.0, 2.0, hub);
+        double[] resultStatic = computeShootWhileMoving(robotPos, headingRad, 0.0, 0.0, hub, new Translation2d(), 0.0);
+        double[] resultMoving = computeShootWhileMoving(robotPos, headingRad, 0.0, 2.0, hub, new Translation2d(), 0.0);
 
         assertNotEquals(resultStatic[1], resultMoving[1], 0.1,
                 "Turret angle should shift with lateral motion");
@@ -144,14 +173,92 @@ class ShooterTest {
         // But the formula: -vTowardHub / (circumference * efficiency)
         // vTowardHub is positive when moving toward hub, so compensation is negative
         // That means we REDUCE flywheel speed because the robot's forward motion helps the ball
-        double[] result = computeShootWhileMoving(robotPos, 0.0, -2.0, 0.0, hub);
+        double[] result = computeShootWhileMoving(robotPos, 0.0, -2.0, 0.0, hub, new Translation2d(), 0.0);
 
         // Moving toward hub (negative vx, but toward hub is positive direction)
-        // vTowardHub = vx * cos(hubAngle) + vy * sin(hubAngle)
+        // vTowardHub = vShooterX * cos(hubAngle) + vShooterY * sin(hubAngle)
         // hub is to the left of robot (negative x direction), so cos(hubAngle) is negative
-        // vx=-2 * cos(PI)=-1 = +2, so vTowardHub > 0 → compensation < 0
+        // vShooterX=-2 * cos(PI)=-1 = +2, so vTowardHub > 0 → compensation < 0
         assertTrue(result[2] < 0,
                 "Moving toward hub should give negative flywheel compensation (reduce speed)");
+    }
+
+    // ==================== SHOOTER POSITION OFFSET ====================
+
+    @Test
+    void shooterOffset_zeroOffset_sameAsRobotCenter() {
+        // When offset is (0,0), shooter IS at robot center — distance equals robot-to-hub distance.
+        Translation2d hub = ShooterConstants.kBlueHubPosition;
+        Translation2d robotPos = new Translation2d(2.0, hub.getY());
+
+        double[] result = computeShootWhileMoving(
+                robotPos, 0.0, 0.0, 0.0, hub, new Translation2d(), 0.0);
+
+        double expectedDist = hub.minus(robotPos).getNorm();
+        assertEquals(expectedDist, result[0], 0.01,
+                "Zero offset should give distance equal to robot-center-to-hub distance");
+        assertEquals(0.0, result[2], 0.01,
+                "Zero offset + stationary robot = zero flywheel compensation");
+    }
+
+    @Test
+    void shooterOffset_nonzero_changesDistance() {
+        // Shooter 0.3m forward of robot center, robot facing hub → shooter is closer to hub.
+        Translation2d hub = ShooterConstants.kBlueHubPosition;
+        Translation2d robotPos = new Translation2d(hub.getX() - 3.0, hub.getY());
+        double headingRad = 0.0; // facing +x (toward hub)
+
+        Translation2d forwardOffset = new Translation2d(0.3, 0.0);
+
+        double[] withOffset = computeShootWhileMoving(
+                robotPos, headingRad, 0.0, 0.0, hub, forwardOffset, 0.0);
+        double[] withoutOffset = computeShootWhileMoving(
+                robotPos, headingRad, 0.0, 0.0, hub, new Translation2d(), 0.0);
+
+        assertTrue(withOffset[0] < withoutOffset[0],
+                "Shooter forward of center should be closer to hub");
+        assertEquals(withoutOffset[0] - 0.3, withOffset[0], 0.01,
+                "Distance should decrease by exactly the forward offset amount");
+    }
+
+    @Test
+    void shooterOffset_nonzero_changesAngle() {
+        // Shooter 0.2m to the left of robot center → aims at a slightly different angle.
+        Translation2d hub = ShooterConstants.kBlueHubPosition;
+        Translation2d robotPos = new Translation2d(hub.getX() - 3.0, hub.getY());
+        double headingRad = 0.0; // facing +x (toward hub)
+
+        Translation2d lateralOffset = new Translation2d(0.0, 0.2); // 0.2m left
+
+        double[] withOffset = computeShootWhileMoving(
+                robotPos, headingRad, 0.0, 0.0, hub, lateralOffset, 0.0);
+        double[] withoutOffset = computeShootWhileMoving(
+                robotPos, headingRad, 0.0, 0.0, hub, new Translation2d(), 0.0);
+
+        assertNotEquals(withoutOffset[1], withOffset[1], 0.01,
+                "Lateral shooter offset should change the required turret angle");
+    }
+
+    @Test
+    void shootWhileMoving_withRotation_futureShooterOffsetApplied() {
+        // With omega != 0 and a nonzero offset, the robot rotates during flight so the
+        // future shooter position differs from the future robot center + current offset.
+        Translation2d hub = ShooterConstants.kBlueHubPosition;
+        Translation2d robotPos = new Translation2d(hub.getX() - 3.0, hub.getY());
+        double headingRad = 0.0;
+        Translation2d shooterOffset = new Translation2d(0.3, 0.0);
+
+        double[] withRotation = computeShootWhileMoving(
+                robotPos, headingRad, 0.0, 0.0, hub, shooterOffset, 1.0);
+        double[] withoutRotation = computeShootWhileMoving(
+                robotPos, headingRad, 0.0, 0.0, hub, shooterOffset, 0.0);
+
+        // When omega != 0, the future heading differs → future shooter offset rotates →
+        // compensated distance and/or angle should differ from the zero-omega case.
+        assertFalse(
+                Math.abs(withRotation[0] - withoutRotation[0]) < 0.001
+                && Math.abs(withRotation[1] - withoutRotation[1]) < 0.001,
+                "Rotation during flight should change the compensated aim solution");
     }
 
     // ==================== TURRET WRAPAROUND HYSTERESIS ====================

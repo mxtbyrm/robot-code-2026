@@ -12,6 +12,7 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
@@ -494,27 +495,40 @@ public class Shooter extends SubsystemBase {
     // ==================== AUTO-AIM CALCULATIONS ====================
 
     /**
-     * Calculates the distance and turret angle to the Hub from the current robot pose,
+     * Calculates the distance and turret angle to the Hub from the current shooter position,
      * with shoot-while-moving compensation using distance-based time-of-flight.
      *
-     * The ball time-of-flight varies with distance (farther = longer arc).
-     * We look up ToF from the interpolation table, predict the robot's position
-     * at ball-arrival time, then compute the aim solution from that predicted position.
+     * <p>The shooter position is the robot odometry center plus a configurable offset
+     * (kShooterPositionOffset) rotated into field frame. When the offset is zero this
+     * reduces to the original robot-center calculation.
+     *
+     * <p>Shoot-while-moving accounts for:
+     * <ul>
+     *   <li>Future shooter position when the robot translates during ball flight</li>
+     *   <li>Future shooter position when the robot rotates during ball flight (offset rotates)</li>
+     *   <li>Shooter's true field velocity = robot velocity + ω × shooter offset</li>
+     * </ul>
      */
     private void updateHubCalculations() {
         Pose2d robotPose = poseSupplier.get();
         Translation2d robotTranslation = robotPose.getTranslation();
+        double robotHeadingRad = robotPose.getRotation().getRadians();
 
-        // ===== STATIC AIM (no compensation) =====
+        // ===== STEP 1: Compute shooter position in field frame =====
+        // Rotate the robot-frame offset by the current robot heading.
+        Translation2d shooterOffsetField = ShooterConstants.kShooterPositionOffset
+                .rotateBy(robotPose.getRotation());
+        Translation2d shooterTranslation = robotTranslation.plus(shooterOffsetField);
+
+        // ===== STATIC AIM (from actual shooter position) =====
         Translation2d hubPosition = ShooterConstants.getActiveHubPosition();
-        Translation2d robotToHub = hubPosition.minus(robotTranslation);
-        distanceToHub = robotToHub.getNorm();
+        Translation2d shooterToHub = hubPosition.minus(shooterTranslation);
+        distanceToHub = shooterToHub.getNorm();
 
         inShootingRange = distanceToHub >= ShooterConstants.kMinShootingDistanceMeters
                        && distanceToHub <= ShooterConstants.kMaxShootingDistanceMeters;
 
-        double fieldAngleToHubRad = Math.atan2(robotToHub.getY(), robotToHub.getX());
-        double robotHeadingRad = robotPose.getRotation().getRadians();
+        double fieldAngleToHubRad = Math.atan2(shooterToHub.getY(), shooterToHub.getX());
         double turretAngleRad = fieldAngleToHubRad - robotHeadingRad;
 
         angleToHub = Math.toDegrees(MathUtil.angleModulus(turretAngleRad))
@@ -523,30 +537,48 @@ public class Shooter extends SubsystemBase {
         // ===== SHOOT-WHILE-MOVING COMPENSATION =====
         if (ShooterConstants.kShootWhileMovingEnabled) {
             ChassisSpeeds fieldSpeeds = fieldSpeedsSupplier.get();
+            double vx = fieldSpeeds.vxMetersPerSecond;
+            double vy = fieldSpeeds.vyMetersPerSecond;
+            double omega = fieldSpeeds.omegaRadiansPerSecond;
+
             // Distance-based time-of-flight from lookup table
             double tof = timeOfFlightTable.get(distanceToHub);
 
-            double futureX = robotTranslation.getX() + fieldSpeeds.vxMetersPerSecond * tof;
-            double futureY = robotTranslation.getY() + fieldSpeeds.vyMetersPerSecond * tof;
-            Translation2d futureRobotPos = new Translation2d(futureX, futureY);
+            // Future robot position after ball flight time
+            double futureRobotX = robotTranslation.getX() + vx * tof;
+            double futureRobotY = robotTranslation.getY() + vy * tof;
 
-            Translation2d futureToHub = hubPosition.minus(futureRobotPos);
+            // Future robot heading (robot rotates during flight)
+            double futureHeadingRad = robotHeadingRad + omega * tof;
 
+            // Future shooter offset (rotated by future heading, since offset is in robot frame)
+            Translation2d futureShooterOffset = ShooterConstants.kShooterPositionOffset
+                    .rotateBy(new Rotation2d(futureHeadingRad));
+
+            // Future shooter position in field frame
+            Translation2d futureShooterPos = new Translation2d(
+                    futureRobotX + futureShooterOffset.getX(),
+                    futureRobotY + futureShooterOffset.getY());
+
+            Translation2d futureToHub = hubPosition.minus(futureShooterPos);
             compensatedDistance = futureToHub.getNorm();
 
             double compensatedFieldAngle = Math.atan2(futureToHub.getY(), futureToHub.getX());
             double compensatedTurretRad = compensatedFieldAngle - robotHeadingRad;
-
             compensatedTurretAngle = Math.toDegrees(MathUtil.angleModulus(compensatedTurretRad))
                                    + ShooterConstants.kTurretMountOffsetDegrees;
 
-            double hubAngle = Math.atan2(robotToHub.getY(), robotToHub.getX());
-            // Velocity component toward hub (dot product of field velocity with hub direction)
-            double vTowardHub = fieldSpeeds.vxMetersPerSecond * Math.cos(hubAngle)
-                              + fieldSpeeds.vyMetersPerSecond * Math.sin(hubAngle);
+            // Shooter's true field velocity = robot velocity + ω × shooter_offset_field
+            // Cross product in 2D: ω × (rx, ry) = (-ω·ry, ω·rx)
+            double vShooterX = vx - omega * shooterOffsetField.getY();
+            double vShooterY = vy + omega * shooterOffsetField.getX();
+
+            // Velocity component toward hub (dot product with hub direction unit vector)
+            double hubAngle = Math.atan2(shooterToHub.getY(), shooterToHub.getX());
+            double vTowardHub = vShooterX * Math.cos(hubAngle) + vShooterY * Math.sin(hubAngle);
+
             // Convert ground-speed compensation to flywheel RPS:
-            // v_exit = RPS × circumference × efficiency, so
-            // delta_RPS = -v_toward_hub / (circumference × efficiency)
+            // v_exit = RPS × circumference × efficiency  →  delta_RPS = -v / (C × η)
             flywheelCompensationRPS = -vTowardHub
                     / (ShooterConstants.kBottomFlywheelCircumferenceMeters
                        * ShooterConstants.kShooterEfficiencyFactor);
@@ -555,6 +587,10 @@ public class Shooter extends SubsystemBase {
             compensatedTurretAngle = angleToHub;
             flywheelCompensationRPS = 0.0;
         }
+
+        // Telemetry: shooter field pose for AdvantageScope visualization
+        Logger.recordOutput("Shooter/ShooterPoseField",
+                new Pose2d(shooterTranslation, robotPose.getRotation()));
     }
 
     /** True if initial motor configuration succeeded. Never cleared once set to false. */
