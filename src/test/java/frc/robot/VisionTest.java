@@ -1,7 +1,7 @@
 package frc.robot;
 
-import frc.robot.Constants.AutoConstants;
-import frc.robot.Constants.VisionConstants;
+import frc.robot.constants.AutoConstants;
+import frc.robot.constants.VisionConstants;
 
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;

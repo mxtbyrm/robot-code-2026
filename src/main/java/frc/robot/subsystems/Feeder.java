@@ -18,8 +18,8 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
-import frc.robot.Constants.FeederConstants;
-import frc.robot.Constants.ShooterConstants;
+import frc.robot.constants.FeederConstants;
+import frc.robot.constants.ShooterConstants;
 import frc.robot.RobotState;
 
 import org.littletonrobotics.junction.Logger;
@@ -58,7 +58,7 @@ import java.util.function.DoubleSupplier;
  * </ol>
  *
  * <h2>Hardware:</h2>
- * 1× Kraken X60 (CAN {@value frc.robot.Constants.FeederConstants#kFeederMotorId})
+ * 1× Kraken X60 (CAN {@value frc.robot.constants.FeederConstants#kFeederMotorId})
  */
 public class Feeder extends SubsystemBase {
 

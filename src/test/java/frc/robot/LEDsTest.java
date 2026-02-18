@@ -1,6 +1,6 @@
 package frc.robot;
 
-import frc.robot.Constants.LEDConstants;
+import frc.robot.constants.LEDConstants;
 
 import org.junit.jupiter.api.Test;
 

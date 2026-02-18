@@ -11,7 +11,7 @@ import java.util.function.Supplier;
 
 import org.littletonrobotics.junction.Logger;
 
-import frc.robot.Constants.AutoConstants;
+import frc.robot.constants.AutoConstants;
 import frc.robot.subsystems.Feeder;
 import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.Shooter;

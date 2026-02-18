@@ -13,7 +13,7 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 
-import frc.robot.Constants.OperatorConstants;
+import frc.robot.constants.OperatorConstants;
 import frc.robot.commands.Autos;
 import frc.robot.commands.OnTheFlyAutos;
 import frc.robot.commands.SwerveDriveCommand;

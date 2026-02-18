@@ -13,7 +13,7 @@ import edu.wpi.first.math.system.plant.LinearSystemId;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.simulation.DCMotorSim;
 
-import frc.robot.Constants.SwerveConstants;
+import frc.robot.constants.SwerveConstants;
 
 /**
  * Physics simulation for the swerve drivetrain.

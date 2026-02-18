@@ -1,6 +1,6 @@
 package frc.robot;
 
-import frc.robot.Constants.BallDetectionConstants;
+import frc.robot.constants.BallDetectionConstants;
 
 import org.junit.jupiter.api.Test;
 

@@ -2,7 +2,7 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.DriverStation;
 
-import frc.robot.Constants.ShooterConstants;
+import frc.robot.constants.ShooterConstants;
 
 /**
  * Basketball-arc shooting table generator for FRC 2026 REBUILT.

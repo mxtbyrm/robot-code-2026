@@ -7,8 +7,8 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import frc.robot.BallPresenceEstimator;
-import frc.robot.Constants.ShooterConstants;
-import frc.robot.Constants.SpindexerConstants;
+import frc.robot.constants.ShooterConstants;
+import frc.robot.constants.SpindexerConstants;
 import frc.robot.HubStateTracker;
 
 import org.littletonrobotics.junction.Logger;

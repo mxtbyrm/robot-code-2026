@@ -7,8 +7,8 @@ import edu.wpi.first.wpilibj2.command.Command;
 
 import org.littletonrobotics.junction.Logger;
 
-import frc.robot.Constants.AutoConstants;
-import frc.robot.Constants.VisionConstants;
+import frc.robot.constants.AutoConstants;
+import frc.robot.constants.VisionConstants;
 import frc.robot.subsystems.SwerveDrive;
 import frc.robot.subsystems.Vision;
 

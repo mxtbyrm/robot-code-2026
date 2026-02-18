@@ -1,6 +1,6 @@
 package frc.robot;
 
-import frc.robot.Constants.SwerveConstants;
+import frc.robot.constants.SwerveConstants;
 
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 

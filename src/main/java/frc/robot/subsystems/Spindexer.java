@@ -16,7 +16,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
-import frc.robot.Constants.SpindexerConstants;
+import frc.robot.constants.SpindexerConstants;
 import frc.robot.RobotState;
 
 import org.littletonrobotics.junction.Logger;
@@ -41,7 +41,7 @@ import org.littletonrobotics.junction.Logger;
  * </ul>
  *
  * <h2>Hardware:</h2>
- * 1× Kraken X60 (CAN {@value frc.robot.Constants.SpindexerConstants#kSpindexerMotorId})
+ * 1× Kraken X60 (CAN {@value frc.robot.constants.SpindexerConstants#kSpindexerMotorId})
  */
 public class Spindexer extends SubsystemBase {
 

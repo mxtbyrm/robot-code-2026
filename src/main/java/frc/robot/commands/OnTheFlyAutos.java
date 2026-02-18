@@ -15,9 +15,9 @@ import java.util.function.Supplier;
 
 import org.littletonrobotics.junction.Logger;
 
-import frc.robot.Constants.AutoConstants;
-import frc.robot.Constants.AutoConstants.PathfindingConstants;
-import frc.robot.Constants.HubConstants;
+import frc.robot.constants.AutoConstants;
+import frc.robot.constants.AutoConstants.PathfindingConstants;
+import frc.robot.constants.HubConstants;
 import frc.robot.subsystems.Shooter;
 import frc.robot.subsystems.Superstructure;
 import frc.robot.subsystems.SwerveDrive;

@@ -7,7 +7,7 @@ import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
-import frc.robot.Constants.LEDConstants;
+import frc.robot.constants.LEDConstants;
 import frc.robot.RobotState;
 import frc.robot.subsystems.Superstructure.SuperState;
 

@@ -21,7 +21,7 @@ import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.wpilibj.DriverStation;
 
-import frc.robot.Constants.SwerveConstants;
+import frc.robot.constants.SwerveConstants;
 
 /**
  * Einstein-grade MK4i swerve module.
@@ -82,9 +82,9 @@ public class SwerveModule {
 
         this.moduleName = moduleName;
 
-        driveMotor = new TalonFX(driveMotorId, frc.robot.Constants.kCANivoreBus);
-        steerMotor = new TalonFX(steerMotorId, frc.robot.Constants.kCANivoreBus);
-        cancoder = new CANcoder(cancoderId, frc.robot.Constants.kCANivoreBus);
+        driveMotor = new TalonFX(driveMotorId, SwerveConstants.kCANivoreBus);
+        steerMotor = new TalonFX(steerMotorId, SwerveConstants.kCANivoreBus);
+        cancoder = new CANcoder(cancoderId, SwerveConstants.kCANivoreBus);
 
         // ==================== CANcoder Configuration ====================
         CANcoderConfiguration cancoderConfig = new CANcoderConfiguration();

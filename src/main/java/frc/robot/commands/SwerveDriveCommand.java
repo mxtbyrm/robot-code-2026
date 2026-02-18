@@ -11,9 +11,9 @@ import edu.wpi.first.wpilibj2.command.Command;
 
 import org.littletonrobotics.junction.Logger;
 
-import frc.robot.Constants.IntakeConstants;
-import frc.robot.Constants.OperatorConstants;
-import frc.robot.Constants.SwerveConstants;
+import frc.robot.constants.IntakeConstants;
+import frc.robot.constants.OperatorConstants;
+import frc.robot.constants.SwerveConstants;
 import frc.robot.subsystems.Shooter;
 import frc.robot.subsystems.SwerveDrive;
 

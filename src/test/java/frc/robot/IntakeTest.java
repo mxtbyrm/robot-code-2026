@@ -1,6 +1,6 @@
 package frc.robot;
 
-import frc.robot.Constants.IntakeConstants;
+import frc.robot.constants.IntakeConstants;
 
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 

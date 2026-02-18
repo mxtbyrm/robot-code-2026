@@ -34,7 +34,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
-import frc.robot.Constants.SwerveConstants;
+import frc.robot.constants.SwerveConstants;
 import frc.robot.RobotState;
 
 import org.littletonrobotics.junction.Logger;
@@ -119,7 +119,7 @@ public class SwerveDrive extends SubsystemBase {
 
     private SwerveDrive() {
         // Initialize Pigeon2 IMU
-        pigeon = new Pigeon2(SwerveConstants.kPigeonId, frc.robot.Constants.kCANivoreBus);
+        pigeon = new Pigeon2(SwerveConstants.kPigeonId, SwerveConstants.kCANivoreBus);
         pigeon.reset();
         pigeon.getYaw().setUpdateFrequency(SwerveConstants.kPigeonYawUpdateFreqHz);
         pigeon.getAngularVelocityZWorld().setUpdateFrequency(SwerveConstants.kPigeonAngVelUpdateFreqHz);

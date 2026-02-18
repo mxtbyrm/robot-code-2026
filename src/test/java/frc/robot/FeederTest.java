@@ -1,7 +1,7 @@
 package frc.robot;
 
-import frc.robot.Constants.FeederConstants;
-import frc.robot.Constants.ShooterConstants;
+import frc.robot.constants.FeederConstants;
+import frc.robot.constants.ShooterConstants;
 
 import edu.wpi.first.math.MathUtil;
 

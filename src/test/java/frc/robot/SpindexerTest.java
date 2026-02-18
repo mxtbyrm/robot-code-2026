@@ -1,6 +1,6 @@
 package frc.robot;
 
-import frc.robot.Constants.SpindexerConstants;
+import frc.robot.constants.SpindexerConstants;
 
 import org.junit.jupiter.api.Test;
 

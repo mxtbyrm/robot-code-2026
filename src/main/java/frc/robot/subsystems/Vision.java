@@ -12,9 +12,9 @@ import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
-import frc.robot.Constants.AutoConstants;
-import frc.robot.Constants.HubConstants;
-import frc.robot.Constants.VisionConstants;
+import frc.robot.constants.AutoConstants;
+import frc.robot.constants.HubConstants;
+import frc.robot.constants.VisionConstants;
 import frc.robot.RobotState;
 
 import org.littletonrobotics.junction.Logger;

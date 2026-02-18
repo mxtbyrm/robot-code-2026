@@ -1,5 +1,7 @@
 package frc.robot;
 
+import frc.robot.constants.BallDetectionConstants;
+
 import org.littletonrobotics.junction.Logger;
 
 /**
@@ -58,16 +60,16 @@ public class BallPresenceEstimator {
     // Set during system health check when mechanisms run empty.
     // Adaptive: slowly drift toward smoothed current when delta is very low
     // (motor spinning empty), which compensates for thermal resistance changes.
-    private double spindexerBaselineCurrent = Constants.BallDetectionConstants.kDefaultSpindexerBaselineCurrent;
-    private double feederBaselineCurrent = Constants.BallDetectionConstants.kDefaultFeederBaselineCurrent;
+    private double spindexerBaselineCurrent = BallDetectionConstants.kDefaultSpindexerBaselineCurrent;
+    private double feederBaselineCurrent = BallDetectionConstants.kDefaultFeederBaselineCurrent;
     private boolean calibrated = false;
     // How fast baseline adapts: fraction per cycle. 0.002 at 50Hz ≈ 1s time constant.
     private static final double kBaselineAdaptRate = 0.002;
 
     // ==================== RUNNING AVERAGES ====================
     // Smoothed current readings to filter out electrical noise.
-    private final double[] spindexerCurrentHistory = new double[Constants.BallDetectionConstants.kCurrentHistorySize];
-    private final double[] feederCurrentHistory = new double[Constants.BallDetectionConstants.kCurrentHistorySize];
+    private final double[] spindexerCurrentHistory = new double[BallDetectionConstants.kCurrentHistorySize];
+    private final double[] feederCurrentHistory = new double[BallDetectionConstants.kCurrentHistorySize];
     private int historyIndex = 0;
     private boolean historyFilled = false;
 
@@ -124,7 +126,7 @@ public class BallPresenceEstimator {
         // as voltage goes DOWN. We scale current DOWN to what it would be at nominal voltage.
         double busVoltage = RobotState.getInstance().getBatteryVoltage();
         if (busVoltage > 8.0 && busVoltage < 12.5) {
-            double voltageScale = busVoltage / Constants.BallDetectionConstants.kNominalCalibrationVoltage;
+            double voltageScale = busVoltage / BallDetectionConstants.kNominalCalibrationVoltage;
             spindexerCurrent *= voltageScale;
             feederCurrent *= voltageScale;
         }
@@ -132,10 +134,10 @@ public class BallPresenceEstimator {
         // ---- Sliding window average ----
         spindexerCurrentHistory[historyIndex] = spindexerRunning ? spindexerCurrent : 0;
         feederCurrentHistory[historyIndex] = feederRunning ? feederCurrent : 0;
-        historyIndex = (historyIndex + 1) % Constants.BallDetectionConstants.kCurrentHistorySize;
+        historyIndex = (historyIndex + 1) % BallDetectionConstants.kCurrentHistorySize;
         if (historyIndex == 0) historyFilled = true;
 
-        int count = historyFilled ? Constants.BallDetectionConstants.kCurrentHistorySize : historyIndex;
+        int count = historyFilled ? BallDetectionConstants.kCurrentHistorySize : historyIndex;
         if (count > 0) {
             double spSum = 0, fSum = 0;
             for (int i = 0; i < count; i++) {
@@ -160,28 +162,28 @@ public class BallPresenceEstimator {
         // resistance changes during a match without needing explicit re-calibration.
         // Only adapt when historyFilled to ensure we have stable smoothed values.
         if (historyFilled) {
-            if (spindexerRunning && spindexerDelta < Constants.BallDetectionConstants.kSpindexerEmptyThreshold) {
+            if (spindexerRunning && spindexerDelta < BallDetectionConstants.kSpindexerEmptyThreshold) {
                 spindexerBaselineCurrent += (smoothedSpindexerCurrent - spindexerBaselineCurrent) * kBaselineAdaptRate;
             }
-            if (feederRunning && feederDelta < Constants.BallDetectionConstants.kFeederBallPresentThreshold * 0.3) {
+            if (feederRunning && feederDelta < BallDetectionConstants.kFeederBallPresentThreshold * 0.3) {
                 feederBaselineCurrent += (smoothedFeederCurrent - feederBaselineCurrent) * kBaselineAdaptRate;
             }
         }
 
         // ---- Determine hopper state from spindexer delta ----
         if (spindexerRunning && historyFilled) {
-            hopperLoaded = spindexerDelta > Constants.BallDetectionConstants.kSpindexerLoadedThreshold;
-            hopperEmpty = spindexerDelta < Constants.BallDetectionConstants.kSpindexerEmptyThreshold;
+            hopperLoaded = spindexerDelta > BallDetectionConstants.kSpindexerLoadedThreshold;
+            hopperEmpty = spindexerDelta < BallDetectionConstants.kSpindexerEmptyThreshold;
 
             // Normalize to 0..1 load level
-            double maxDelta = Constants.BallDetectionConstants.kSpindexerFullLoadDelta;
+            double maxDelta = BallDetectionConstants.kSpindexerFullLoadDelta;
             hopperLoadLevel = Math.min(Math.max(spindexerDelta / maxDelta, 0.0), 1.0);
         }
         // When spindexer is idle, retain last known state — don't reset to unknown.
 
         // ---- Detect ball at feeder entrance ----
         if (feederRunning) {
-            ballAtFeeder = feederDelta > Constants.BallDetectionConstants.kFeederBallPresentThreshold;
+            ballAtFeeder = feederDelta > BallDetectionConstants.kFeederBallPresentThreshold;
         } else {
             ballAtFeeder = false;
         }
