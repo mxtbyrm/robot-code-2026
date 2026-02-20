@@ -32,22 +32,22 @@ Competition robot code for the 2026 FIRST Robotics Competition season. Built in 
 
 ### Scoring Summary
 
-| Action | Points |
-|---|---|
-| FUEL in Active HUB (Auto or Teleop) | 1 pt |
-| FUEL in Inactive HUB | 0 pts |
-| Level 1 TOWER climb (Auto) | 15 pts |
-| Level 1 TOWER climb (Teleop) | 10 pts |
-| Level 2 TOWER climb (Teleop) | 20 pts |
-| Level 3 TOWER climb (Teleop) | 30 pts |
+| Action                              | Points |
+| ----------------------------------- | ------ |
+| FUEL in Active HUB (Auto or Teleop) | 1 pt   |
+| FUEL in Inactive HUB                | 0 pts  |
+| Level 1 TOWER climb (Auto)          | 15 pts |
+| Level 1 TOWER climb (Teleop)        | 10 pts |
+| Level 2 TOWER climb (Teleop)        | 20 pts |
+| Level 3 TOWER climb (Teleop)        | 30 pts |
 
 ### Ranking Points
 
-| RP | Threshold |
-|---|---|
-| ENERGIZED | ≥ 100 FUEL in active HUBs |
+| RP           | Threshold                 |
+| ------------ | ------------------------- |
+| ENERGIZED    | ≥ 100 FUEL in active HUBs |
 | SUPERCHARGED | ≥ 360 FUEL in active HUBs |
-| TRAVERSAL | ≥ 50 total TOWER points |
+| TRAVERSAL    | ≥ 50 total TOWER points   |
 
 ### Field Dimensions
 
@@ -57,14 +57,14 @@ Competition robot code for the 2026 FIRST Robotics Competition season. Built in 
 
 ### Teleop Timing (HUB Shift Schedule)
 
-| Period | Duration | HUB State |
-|---|---|---|
-| Transition Shift | 10 s | Both HUBs Active |
-| Shift 1 | 25 s | Alternating per auto result |
-| Shift 2 | 25 s | Alternating |
-| Shift 3 | 25 s | Alternating |
-| Shift 4 | 25 s | Alternating |
-| End Game | 30 s | Both HUBs Active |
+| Period           | Duration | HUB State                   |
+| ---------------- | -------- | --------------------------- |
+| Transition Shift | 10 s     | Both HUBs Active            |
+| Shift 1          | 25 s     | Alternating per auto result |
+| Shift 2          | 25 s     | Alternating                 |
+| Shift 3          | 25 s     | Alternating                 |
+| Shift 4          | 25 s     | Alternating                 |
+| End Game         | 30 s     | Both HUBs Active            |
 
 > The alliance that scored **more FUEL in Autonomous** starts Teleop with its HUB **Inactive** in Shift 1. FUEL scored up to 3 seconds after deactivation still counts (grace period, Game Manual §6.5).
 
@@ -145,6 +145,7 @@ Order matters — later subsystems depend on earlier ones via `Supplier<>` injec
 4× SDS MK4i L2 swerve modules with Kraken X60 drive and steer motors, CANcoders for absolute steering, Pigeon2 IMU for field-oriented control.
 
 **Key features:**
+
 - Dedicated **250 Hz odometry thread** (`Notifier`) for high-frequency pose updates independent of the 50 Hz main loop
 - `SwerveDrivePoseEstimator` for vision-fused odometry
 - Second-order kinematics (trapezoidal midpoint prediction) to reduce trajectory lag
@@ -162,6 +163,7 @@ Order matters — later subsystems depend on earlier ones via `Supplier<>` injec
 Individual MK4i module control (one instance per module, created by SwerveDrive).
 
 **Key features:**
+
 - **Cosine compensation** — scales drive speed by `cos(angleError)` to reduce scrubbing during large steering corrections
 - **Anti-jitter threshold** — holds last steer angle when commanded drive speed < 0.05 m/s
 - **Signal health monitoring** — detects stale CAN frames and marks the module unhealthy
@@ -179,13 +181,14 @@ Desktop simulation support using WPILib `DCMotorSim` and Phoenix 6 simulation st
 
 Three-axis aiming system with autonomous Hub tracking.
 
-| Component | Motor | CAN ID | Control |
-|---|---|---|---|
-| Flywheel | Kraken X60 | 20 | Velocity (RPS) |
-| Hood | Kraken X60 | 21 | Position (degrees) |
-| Turret | Kraken X60 | 22 | Position (degrees) |
+| Component | Motor      | CAN ID | Control            |
+| --------- | ---------- | ------ | ------------------ |
+| Flywheel  | Kraken X60 | 20     | Velocity (RPS)     |
+| Hood      | Kraken X60 | 21     | Position (degrees) |
+| Turret    | Kraken X60 | 22     | Position (degrees) |
 
 **Flywheel specs:**
+
 - Bottom flywheel: 4" diameter, 2:1 gear ratio from motor
 - Top flywheel: 2" diameter (geared 2× faster for equal surface speed)
 - Ready window: ±2 RPS
@@ -193,24 +196,28 @@ Three-axis aiming system with autonomous Hub tracking.
 - Normalization ceiling: 90 RPS
 
 **Hood specs:**
+
 - Travel: 27.5° – 42.5° from horizontal
 - Gravity feedforward: `kHoodG = 0.15 V` (constant holdoff)
 - Tolerance: ±0.5°
 - Must be physically placed at minimum (most open) position before power-on
 
 **Turret specs:**
+
 - Travel: ±175° from center (soft limits; `ContinuousWrap` intentionally disabled)
 - Tolerance: ±1°
 - Must be physically centered at 0° before power-on
 - **Wraparound protection:** when turret reaches ±150°, sends a proportional rotation hint to `SwerveDriveCommand` so the drivetrain auto-rotates to bring the target back into range
 
 **Shooting pipeline:**
+
 1. `updateHubCalculations()` runs every cycle — computes distance, turret angle, and shoot-while-moving compensation
 2. Shoot-while-moving: looks up time-of-flight from `timeOfFlightTable`, predicts robot future position, re-solves aim
 3. Lookup tables generated by `ShooterPhysics.computeShootingTable()` at robot init (not hardcoded)
 4. `isReadyToShoot()` gates the feeder: flywheel at speed + hood at target + turret at target + in range + flywheel recovered
 
 **Alliance zone dump mode:**
+
 - Fixed parameters (no auto-aim) configured in `RobotConfig.java`
 - Activated via operator right bumper
 
@@ -240,17 +247,17 @@ Central state machine coordinating all game piece mechanisms. **All operator inp
                                   DISABLED
 ```
 
-| State | Intake Arm | Roller | Spindexer | Feeder | Notes |
-|---|---|---|---|---|---|
-| IDLE | No change | Off | Off | Off | Shooter still auto-aims in its periodic() |
-| INTAKING | No change | Forward | Off | Off | Roller only runs if arm is deployed |
-| PRE_FEED_REVERSE | No change | Off | Reverse slow | Reverse slow | Anti-jam clearance pulse before feeding |
-| SHOOTING | No change | Off | Forward (scaled) | Forward (gated) | Feeder gated by `isReadyToShoot()` + HUB state |
-| SHOOTING_WHILE_INTAKING | No change | Forward | Forward (scaled) | Forward (gated) | Combined intake + shoot |
-| SHOOTING_ALLIANCE | No change | Off | Forward (scaled) | Forward (gated) | Fixed shooter params |
-| OUTTAKING | No change | Reverse | Reverse | Off | Arm must be deployed |
-| UNJAMMING | No change | Reverse | Reverse | Reverse | Reverses everything |
-| DISABLED | Stow + stop | Off | Off | Off | Emergency stop |
+| State                   | Intake Arm  | Roller  | Spindexer        | Feeder          | Notes                                          |
+| ----------------------- | ----------- | ------- | ---------------- | --------------- | ---------------------------------------------- |
+| IDLE                    | No change   | Off     | Off              | Off             | Shooter still auto-aims in its periodic()      |
+| INTAKING                | No change   | Forward | Off              | Off             | Roller only runs if arm is deployed            |
+| PRE_FEED_REVERSE        | No change   | Off     | Reverse slow     | Reverse slow    | Anti-jam clearance pulse before feeding        |
+| SHOOTING                | No change   | Off     | Forward (scaled) | Forward (gated) | Feeder gated by `isReadyToShoot()` + HUB state |
+| SHOOTING_WHILE_INTAKING | No change   | Forward | Forward (scaled) | Forward (gated) | Combined intake + shoot                        |
+| SHOOTING_ALLIANCE       | No change   | Off     | Forward (scaled) | Forward (gated) | Fixed shooter params                           |
+| OUTTAKING               | No change   | Reverse | Reverse          | Off             | Arm must be deployed                           |
+| UNJAMMING               | No change   | Reverse | Reverse          | Reverse         | Reverses everything                            |
+| DISABLED                | Stow + stop | Off     | Off              | Off             | Emergency stop                                 |
 
 **Endgame auto-dump:** In the last 10 seconds of Teleop, Superstructure automatically enables shooter tracking and transitions to SHOOTING. Operator can cancel via START (emergency stop) or BACK (idle) — once cancelled, the dump will not re-activate for the rest of the match.
 
@@ -262,19 +269,21 @@ Central state machine coordinating all game piece mechanisms. **All operator inp
 
 Slapdown-style intake with a powered arm and roller.
 
-| Component | Motor | CAN ID | Control |
-|---|---|---|---|
-| Left deploy | Kraken X60 | 24 | Motion Magic (position) |
-| Right deploy | Kraken X60 | 25 | Voltage mirror (asymmetric gravity FF) |
-| Roller | Kraken X60 | 26 | Open-loop duty cycle |
+| Component    | Motor      | CAN ID | Control                                |
+| ------------ | ---------- | ------ | -------------------------------------- |
+| Left deploy  | Kraken X60 | 24     | Motion Magic (position)                |
+| Right deploy | Kraken X60 | 25     | Voltage mirror (asymmetric gravity FF) |
+| Roller       | Kraken X60 | 26     | Open-loop duty cycle                   |
 
 **Asymmetric gravity compensation:**
 Standard `Arm_Cosine` doesn't match the nonlinear slapdown linkage torque profile. Instead:
+
 - Left motor runs Motion Magic + gravity feedforward from `InterpolatingDoubleTreeMap`
 - Right motor mirrors left motor output, replacing the gravity FF component with its own higher-voltage table (more weight on right side due to off-center roller/linkage mass)
 - Both gravity tables are defined in `RobotConfig.java` (`kDeployLeftGravityVoltages` / `kDeployRightGravityVoltages`) and must be tuned on the real robot
 
 **Positions:**
+
 - Stowed: 0.0 mechanism rotations (inside bumpers)
 - Deployed: ~−0.00323 mechanism rotations (ground contact, derived from `kIntakeExtendedMotorRotations`)
 - Hover: midpoint (partial deploy)
@@ -287,10 +296,10 @@ Standard `Arm_Cosine` doesn't match the nonlinear slapdown linkage torque profil
 
 Ball transport from the spindexer hopper to the shooter flywheels.
 
-| Component | CAN ID | Type |
-|---|---|---|
-| Feeder motor (Kraken X60) | 23 | Open-loop duty cycle |
-| Beam break sensor | DIO (see `RobotConfig.kBeamBreakDIOPort`) | `DigitalInput` |
+| Component                 | CAN ID                                    | Type                 |
+| ------------------------- | ----------------------------------------- | -------------------- |
+| Feeder motor (Kraken X60) | 23                                        | Open-loop duty cycle |
+| Beam break sensor         | DIO (see `RobotConfig.kBeamBreakDIOPort`) | `DigitalInput`       |
 
 **Speed control:** `feeder_duty = kFeederSpeedRatio × (shooterTargetRPS / kMaxFlywheelRPS)`. This creates a chain (Shooter RPS → Feeder → Spindexer) that automatically enforces the speed hierarchy.
 
@@ -306,14 +315,16 @@ Ball transport from the spindexer hopper to the shooter flywheels.
 
 Rotating hopper that indexes balls from the intake toward the feeder.
 
-| Component | CAN ID |
-|---|---|
-| Spindexer motor (Kraken X60) | 27 |
+| Component                    | CAN ID |
+| ---------------------------- | ------ |
+| Spindexer motor (Kraken X60) | 27     |
 
 **Speed hierarchy (critical — prevents jams):**
+
 ```
 Flywheel surface speed  >>  Feeder  >  Spindexer  >  Intake roller
 ```
+
 The `kFeederSpeedRatio` / `kSpindexerToFeederRatio` chain enforces this automatically.
 
 **Auto-unjam:** Stall detected (>25 A + <0.3 RPS for 15 cycles) → reverses, then resumes at last commanded speed.
@@ -326,18 +337,19 @@ Multi-camera AprilTag processing using PhotonVision (PhotonLib).
 
 **Camera layout (6 cameras total):**
 
-| Camera Name | Purpose |
-|---|---|
-| `cam_front_left` | AprilTag pose estimation — front-left corner |
-| `cam_front_right` | AprilTag pose estimation — front-right corner |
-| `cam_back_left` | AprilTag pose estimation — back-left corner |
-| `cam_back_right` | AprilTag pose estimation — back-right corner |
-| `cam_intake` | Ball / object detection (ML pipeline, NOT AprilTag) |
-| `cam_side` | Situational awareness |
+| Camera Name       | Purpose                                             |
+| ----------------- | --------------------------------------------------- |
+| `cam_front_left`  | AprilTag pose estimation — front-left corner        |
+| `cam_front_right` | AprilTag pose estimation — front-right corner       |
+| `cam_back_left`   | AprilTag pose estimation — back-left corner         |
+| `cam_back_right`  | AprilTag pose estimation — back-right corner        |
+| `cam_intake`      | Ball / object detection (ML pipeline, NOT AprilTag) |
+| `cam_side`        | Situational awareness                               |
 
 Each camera has an independently configured 6-DOF pose (X, Y, Z, roll, pitch, yaw) in `RobotConfig.java`. No two cameras share the same height or angle assumptions — measure each one individually.
 
 **Pose estimation pipeline (per AprilTag camera):**
+
 ```
 PhotonLib result
   1. Skip if no targets
@@ -354,6 +366,7 @@ PhotonLib result
 ```
 
 **HUB AprilTag IDs:**
+
 - Blue HUB: Tags 2, 3, 4, 5, 8, 9, 10, 11
 - Red HUB: Tags 18, 19, 20, 21, 24, 25, 26, 27
 
@@ -375,33 +388,33 @@ See [LED Feedback Reference](#led-feedback-reference) for the full priority tabl
 
 ### Driver Controller (Port 0) — Driving only
 
-| Input | Action |
-|---|---|
-| Left Stick X/Y | Translation (field-relative) |
-| Right Stick X | Rotation |
-| **Right Trigger** (>0.3) | **Slow mode** (35% speed, 40% rotation) |
-| **X Button** | **X-lock wheels** (defensive stance, hold) |
-| **Y Button** | **Vision ball chase** + intake rollers (hold) |
-| **START** | Zero gyro (reset field-relative forward) |
-| D-Pad Up | Snap heading to 0° (away from DS) |
-| D-Pad Right | Snap heading to −90° (face right) |
-| D-Pad Down | Snap heading to 180° (face DS) |
-| D-Pad Left | Snap heading to 90° (face left) |
+| Input                    | Action                                        |
+| ------------------------ | --------------------------------------------- |
+| Left Stick X/Y           | Translation (field-relative)                  |
+| Right Stick X            | Rotation                                      |
+| **Right Trigger** (>0.3) | **Slow mode** (35% speed, 40% rotation)       |
+| **X Button**             | **X-lock wheels** (defensive stance, hold)    |
+| **Y Button**             | **Vision ball chase** + intake rollers (hold) |
+| **START**                | Zero gyro (reset field-relative forward)      |
+| D-Pad Up                 | Snap heading to 0° (away from DS)             |
+| D-Pad Right              | Snap heading to −90° (face right)             |
+| D-Pad Down               | Snap heading to 180° (face DS)                |
+| D-Pad Left               | Snap heading to 90° (face left)               |
 
 ### Operator Controller (Port 1) — All mechanisms
 
-| Input | Action |
-|---|---|
-| **Right Trigger** (>0.3) | **Shoot** — enables Hub tracking + feed (hold) |
-| **Left Trigger** (>0.3) | **Intake rollers** — hold to collect (arm must be deployed first) |
-| **A Button** | **Intake arm toggle** — deploy/stow (press) |
-| **Right Bumper** | **Alliance zone dump** — lob shot into alliance zone (hold) |
-| **Left Bumper** | **Outtake** — deploy + reverse rollers (hold) |
-| **B Button** | **Unjam** — reverse everything (hold) |
-| **START** | Emergency stop all mechanisms |
-| **BACK** | Re-enable after emergency stop |
-| D-Pad Up | Hood angle trim +2° (additive to auto-aim, clamped ±4°) |
-| D-Pad Down | Hood angle trim −2° |
+| Input                    | Action                                                            |
+| ------------------------ | ----------------------------------------------------------------- |
+| **Right Trigger** (>0.3) | **Shoot** — enables Hub tracking + feed (hold)                    |
+| **Left Trigger** (>0.3)  | **Intake rollers** — hold to collect (arm must be deployed first) |
+| **A Button**             | **Intake arm toggle** — deploy/stow (press)                       |
+| **Right Bumper**         | **Alliance zone dump** — lob shot into alliance zone (hold)       |
+| **Left Bumper**          | **Outtake** — deploy + reverse rollers (hold)                     |
+| **B Button**             | **Unjam** — reverse everything (hold)                             |
+| **START**                | Emergency stop all mechanisms                                     |
+| **BACK**                 | Re-enable after emergency stop                                    |
+| D-Pad Up                 | Hood angle trim +2° (additive to auto-aim, clamped ±4°)           |
+| D-Pad Down               | Hood angle trim −2°                                               |
 
 ### Teleop Drive Features
 
@@ -419,26 +432,26 @@ See [LED Feedback Reference](#led-feedback-reference) for the full priority tabl
 
 Priority order (highest to lowest):
 
-| Priority | Condition | Pattern | Color |
-|---|---|---|---|
-| 1 | Any subsystem unhealthy | Fast flash (5 Hz) | Red |
-| 2 | Low battery (<7.0 V) | Pulse (2 Hz) | Orange-Red |
-| 2.5 | <2 AprilTag cameras connected | Alternating | Cyan / Red |
-| 2.6 | Turret at hard limit | Rapid strobe (12 Hz) | Orange |
-| 2.7 | Brownout predicted | Strobe (8 Hz) | Orange |
-| 2.8 | Turret near limit (>150°) | Pulse (4 Hz) | Orange |
-| 3 | Disabled | Breathe (1.5 Hz) | Alliance color |
-| 4 | Shooting + ready to shoot | Strobe (10 Hz) | Green |
-| 4.1 | Alliance zone dump + ready | Strobe (10 Hz) | Purple |
-| 4.2 | Shooting + waiting for lock | Pulse (3 Hz) | Yellow |
-| 5 | Intaking + ball detected | Flash (6 Hz) | Cyan |
-| 6 | Intaking | Chase | Blue |
-| 7 | Outtaking | Chase | Orange |
-| 8 | Unjamming | Flash (3 Hz) | Red |
-| 9 | Idle + tracking + ready | Solid | Green |
-| 10 | Idle + tracking + not locked | Pulse (3 Hz) | Magenta |
-| 11 | Idle + in range, not tracking | Pulse (2 Hz) | Green |
-| 12 | Idle | Solid | Alliance color |
+| Priority | Condition                     | Pattern              | Color          |
+| -------- | ----------------------------- | -------------------- | -------------- |
+| 1        | Any subsystem unhealthy       | Fast flash (5 Hz)    | Red            |
+| 2        | Low battery (<7.0 V)          | Pulse (2 Hz)         | Orange-Red     |
+| 2.5      | <2 AprilTag cameras connected | Alternating          | Cyan / Red     |
+| 2.6      | Turret at hard limit          | Rapid strobe (12 Hz) | Orange         |
+| 2.7      | Brownout predicted            | Strobe (8 Hz)        | Orange         |
+| 2.8      | Turret near limit (>150°)     | Pulse (4 Hz)         | Orange         |
+| 3        | Disabled                      | Breathe (1.5 Hz)     | Alliance color |
+| 4        | Shooting + ready to shoot     | Strobe (10 Hz)       | Green          |
+| 4.1      | Alliance zone dump + ready    | Strobe (10 Hz)       | Purple         |
+| 4.2      | Shooting + waiting for lock   | Pulse (3 Hz)         | Yellow         |
+| 5        | Intaking + ball detected      | Flash (6 Hz)         | Cyan           |
+| 6        | Intaking                      | Chase                | Blue           |
+| 7        | Outtaking                     | Chase                | Orange         |
+| 8        | Unjamming                     | Flash (3 Hz)         | Red            |
+| 9        | Idle + tracking + ready       | Solid                | Green          |
+| 10       | Idle + tracking + not locked  | Pulse (3 Hz)         | Magenta        |
+| 11       | Idle + in range, not tracking | Pulse (2 Hz)         | Green          |
+| 12       | Idle                          | Solid                | Alliance color |
 
 ---
 
@@ -448,17 +461,17 @@ Two autonomous systems coexist, selectable from the SmartDashboard `"Auto Choose
 
 ### PathPlanner (Primary — `[PP]` prefix)
 
-Dynamic pathfinding using PathPlanner's AD* algorithm with `navgrid.json` for obstacle awareness. Paths computed at runtime via `AutoBuilder.pathfindToPose()`.
+Dynamic pathfinding using PathPlanner's AD\* algorithm with `navgrid.json` for obstacle awareness. Paths computed at runtime via `AutoBuilder.pathfindToPose()`.
 
-| Routine | Description | Expected Score |
-|---|---|---|
-| `[PP] Preload & Park` | Score preload, park in neutral zone | ~8 pts |
-| `[PP] Preload & Collect Center` | Score preload, collect center, score again | ~12–16 pts |
-| `[PP] Preload & Collect Side` | Score preload, collect near trench, score again | ~12–16 pts |
-| `[PP] Preload & Collect Depot` | Score preload, collect depot (24 pre-staged), score again | ~12–16 pts |
-| `[PP] Double Trench Score` | Two trench crossings with scoring | ~14–20 pts |
-| `[PP] Aggressive Sweep` | Near-trench → center → far-trench | ~16–24 pts |
-| `[PP] Defensive Preload` | Score preload, park near hub to deny access | ~8 pts |
+| Routine                         | Description                                               | Expected Score |
+| ------------------------------- | --------------------------------------------------------- | -------------- |
+| `[PP] Preload & Park`           | Score preload, park in neutral zone                       | ~8 pts         |
+| `[PP] Preload & Collect Center` | Score preload, collect center, score again                | ~12–16 pts     |
+| `[PP] Preload & Collect Side`   | Score preload, collect near trench, score again           | ~12–16 pts     |
+| `[PP] Preload & Collect Depot`  | Score preload, collect depot (24 pre-staged), score again | ~12–16 pts     |
+| `[PP] Double Trench Score`      | Two trench crossings with scoring                         | ~14–20 pts     |
+| `[PP] Aggressive Sweep`         | Near-trench → center → far-trench                         | ~16–24 pts     |
+| `[PP] Defensive Preload`        | Score preload, park near hub to deny access               | ~8 pts         |
 
 - Robot config read from PathPlanner GUI settings file (`RobotConfig.fromGUISettings()`)
 - Coordinates always in Blue Alliance frame; `AutoBuilder` flips for Red automatically
@@ -468,15 +481,15 @@ Dynamic pathfinding using PathPlanner's AD* algorithm with `navgrid.json` for ob
 
 Pre-planned trajectories from the Choreo GUI, alliance-mirrored automatically.
 
-| Routine | Required Trajectory Files |
-|---|---|
-| `[Choreo] Preload & Park` | `preload.1`, `preload.2` |
-| `[Choreo] Center 2-Cycle` | `center2.1–3` |
-| `[Choreo] Left 2-Cycle` | `left2.1–3` |
-| `[Choreo] Right 2-Cycle` | `right2.1–3` |
-| `[Choreo] Center 3-Cycle` | `center3.1–5` |
-| `[Choreo] Shoot While Moving` | `swm.1`, `swm.2` |
-| `[Choreo] Depot Cycle` | `depot.1–3` |
+| Routine                       | Required Trajectory Files |
+| ----------------------------- | ------------------------- |
+| `[Choreo] Preload & Park`     | `preload.1`, `preload.2`  |
+| `[Choreo] Center 2-Cycle`     | `center2.1–3`             |
+| `[Choreo] Left 2-Cycle`       | `left2.1–3`               |
+| `[Choreo] Right 2-Cycle`      | `right2.1–3`              |
+| `[Choreo] Center 3-Cycle`     | `center3.1–5`             |
+| `[Choreo] Shoot While Moving` | `swm.1`, `swm.2`          |
+| `[Choreo] Depot Cycle`        | `depot.1–3`               |
 
 Trajectory `.traj` files go in `src/main/deploy/choreo/`. Choreo is the fallback system; PathPlanner is primary.
 
@@ -525,11 +538,11 @@ Axes: X = forward, Y = left, Z = up. Pitch is **negative for upward tilt** (WPIL
 
 Configured in `RobotConfig.java` as raw `double[]` arrays; `VisionConstants` constructs the `Matrix` objects:
 
-| Condition | Default std devs (x, y, heading) |
-|---|---|
-| Multi-tag | (0.5, 0.5, 1.0) → then scaled by distance² |
-| Single tag | (4.0, 4.0, 8.0) → rejected beyond 5.5 m |
-| Aggressive multi-tag (post-collision snap) | (0.1, 0.1, 0.2) |
+| Condition                                  | Default std devs (x, y, heading)           |
+| ------------------------------------------ | ------------------------------------------ |
+| Multi-tag                                  | (0.5, 0.5, 1.0) → then scaled by distance² |
+| Single tag                                 | (4.0, 4.0, 8.0) → rejected beyond 5.5 m    |
+| Aggressive multi-tag (post-collision snap) | (0.1, 0.1, 0.2)                            |
 
 ---
 
@@ -545,33 +558,33 @@ All subsystems use `Logger.recordOutput("Key", value)` for structured telemetry.
 
 ### Key Log Paths
 
-| Path | Description |
-|---|---|
-| `Swerve/Pose` | Robot field position (Pose2d) |
-| `Swerve/ModuleStates` | All 4 module states |
-| `Swerve/GyroDriftWarning` | Gyro vs kinematics omega disagrees >0.5 rad/s |
-| `Shooter/DistanceToHub` | Odometry-based distance to Hub |
-| `Shooter/CompensatedDistance` | Shoot-while-moving compensated distance |
-| `Shooter/ReadyToShoot` | All shooter systems locked |
-| `Shooter/TurretWraparoundHint` | Rotation hint for drivetrain |
-| `Shooter/TurretPose3d` | 3D turret visualization (AdvantageScope) |
-| `Shooter/HoodPose3d` | 3D hood visualization (AdvantageScope) |
-| `Super/State` | Current Superstructure state name |
-| `Super/BallsShot` | Running ball count (beam break) |
-| `Super/HubActive` | HUB currently active |
-| `Super/HubNextShift` | Seconds until next shift boundary |
-| `HUB/Status` | ACTIVE / INACTIVE / UNKNOWN |
-| `HUB/ShouldShoot` | Strategic shoot decision |
-| `Vision/ConnectedATCameras` | Number of connected AprilTag cameras |
-| `Vision/BallDetected` | Ball visible in intake camera |
-| `Vision/DistanceDiscrepancy` | Odometry vs vision distance delta |
-| `BallEst/HopperEmpty` | Current-based hopper empty flag |
-| `BallEst/HopperLoadLevel` | 0.0–1.0 fullness estimate |
-| `RobotState/BatteryVoltage` | Battery voltage |
-| `RobotState/CANUtilization` | CAN bus % utilization |
-| `RobotState/LoopOverruns` | Loop overrun count (>25 ms) |
-| `Intake/LeftGravityFF` | Left arm gravity feedforward (V) |
-| `Intake/RightGravityFF` | Right arm gravity feedforward (V) |
+| Path                           | Description                                   |
+| ------------------------------ | --------------------------------------------- |
+| `Swerve/Pose`                  | Robot field position (Pose2d)                 |
+| `Swerve/ModuleStates`          | All 4 module states                           |
+| `Swerve/GyroDriftWarning`      | Gyro vs kinematics omega disagrees >0.5 rad/s |
+| `Shooter/DistanceToHub`        | Odometry-based distance to Hub                |
+| `Shooter/CompensatedDistance`  | Shoot-while-moving compensated distance       |
+| `Shooter/ReadyToShoot`         | All shooter systems locked                    |
+| `Shooter/TurretWraparoundHint` | Rotation hint for drivetrain                  |
+| `Shooter/TurretPose3d`         | 3D turret visualization (AdvantageScope)      |
+| `Shooter/HoodPose3d`           | 3D hood visualization (AdvantageScope)        |
+| `Super/State`                  | Current Superstructure state name             |
+| `Super/BallsShot`              | Running ball count (beam break)               |
+| `Super/HubActive`              | HUB currently active                          |
+| `Super/HubNextShift`           | Seconds until next shift boundary             |
+| `HUB/Status`                   | ACTIVE / INACTIVE / UNKNOWN                   |
+| `HUB/ShouldShoot`              | Strategic shoot decision                      |
+| `Vision/ConnectedATCameras`    | Number of connected AprilTag cameras          |
+| `Vision/BallDetected`          | Ball visible in intake camera                 |
+| `Vision/DistanceDiscrepancy`   | Odometry vs vision distance delta             |
+| `BallEst/HopperEmpty`          | Current-based hopper empty flag               |
+| `BallEst/HopperLoadLevel`      | 0.0–1.0 fullness estimate                     |
+| `RobotState/BatteryVoltage`    | Battery voltage                               |
+| `RobotState/CANUtilization`    | CAN bus % utilization                         |
+| `RobotState/LoopOverruns`      | Loop overrun count (>25 ms)                   |
+| `Intake/LeftGravityFF`         | Left arm gravity feedforward (V)              |
+| `Intake/RightGravityFF`        | Right arm gravity feedforward (V)             |
 
 ---
 
@@ -589,33 +602,34 @@ All subsystems, commands, and tests import constants from the `constants/` packa
 
 ### What lives in RobotConfig
 
-| Category | Examples |
-|---|---|
-| Controller ports & deadband | `kDriverControllerPort`, `kDeadband` |
-| LED hardware | `kLedPort`, `kLedCount` |
-| All 13 swerve CAN IDs | `kFrontLeftDriveMotorId` … `kPigeonId` |
-| Swerve module hardware | `kDriveGearRatio`, `kWheelDiameterMeters` |
-| Swerve motor current limits | `kDriveCurrentLimit`, `kDriveStatorCurrentLimit`, `kSteerCurrentLimit` |
-| All swerve PID / FF / driver tuning | `kDriveP/V/S`, `kSteerP`, `kAutoTranslationP`, `kHeadingLockP`, `kSlowModeSpeedMultiplier`, … |
-| Shooter CAN IDs | `kFlywheelMotorId`, `kHoodMotorId`, `kTurretMotorId` |
-| Shooter hardware dimensions | flywheel diameters, gear ratios, turret/hood heights |
-| Shooter geometry | `kShooterPositionOffset`, `kShooterExitHeightMeters` |
-| Hood & turret calibration | hard-stop encoder readings, turret gear ratio, mount offset |
-| Shooter PID / FF / tuning | flywheel / hood / turret PID, efficiency factor, bias factors |
-| Alliance zone dump params | `kAllianceZoneFlywheelRPS`, hood angle, turret angle, feeder speed |
-| Pre-feed reverse params | duration, feeder speed, spindexer speed |
-| Feeder & spindexer CAN + tuning | motor IDs, beam break DIO, speed ratios, current limits |
-| Intake CAN IDs | `kLeftDeployMotorId`, `kRightDeployMotorId`, `kRollerMotorId` |
-| Intake hardware / calibration | gear ratios, deploy travel, roller dimensions, PID, Motion Magic, gravity FF voltages, current limits, roller speeds |
-| Per-camera 6-DOF poses | X, Y, Z, roll, pitch, yaw for each of 6 cameras |
-| Vision std devs & ball-chase PID | `kMultiTagStdDevs`, `kBallChaseYawP`, … |
-| Ball detection thresholds | baseline currents, loaded/empty/full thresholds |
-| Swerve geometry | `kTrackWidthMeters`, `kWheelBaseMeters` |
-| CANcoder offsets | one per module |
+| Category                            | Examples                                                                                                             |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Controller ports & deadband         | `kDriverControllerPort`, `kDeadband`                                                                                 |
+| LED hardware                        | `kLedPort`, `kLedCount`                                                                                              |
+| All 13 swerve CAN IDs               | `kFrontLeftDriveMotorId` … `kPigeonId`                                                                               |
+| Swerve module hardware              | `kDriveGearRatio`, `kWheelDiameterMeters`                                                                            |
+| Swerve motor current limits         | `kDriveCurrentLimit`, `kDriveStatorCurrentLimit`, `kSteerCurrentLimit`                                               |
+| All swerve PID / FF / driver tuning | `kDriveP/V/S`, `kSteerP`, `kAutoTranslationP`, `kHeadingLockP`, `kSlowModeSpeedMultiplier`, …                        |
+| Shooter CAN IDs                     | `kFlywheelMotorId`, `kHoodMotorId`, `kTurretMotorId`                                                                 |
+| Shooter hardware dimensions         | flywheel diameters, gear ratios, turret/hood heights                                                                 |
+| Shooter geometry                    | `kShooterPositionOffset`, `kShooterExitHeightMeters`                                                                 |
+| Hood & turret calibration           | hard-stop encoder readings, turret gear ratio, mount offset                                                          |
+| Shooter PID / FF / tuning           | flywheel / hood / turret PID, efficiency factor, bias factors                                                        |
+| Alliance zone dump params           | `kAllianceZoneFlywheelRPS`, hood angle, turret angle, feeder speed                                                   |
+| Pre-feed reverse params             | duration, feeder speed, spindexer speed                                                                              |
+| Feeder & spindexer CAN + tuning     | motor IDs, beam break DIO, speed ratios, current limits                                                              |
+| Intake CAN IDs                      | `kLeftDeployMotorId`, `kRightDeployMotorId`, `kRollerMotorId`                                                        |
+| Intake hardware / calibration       | gear ratios, deploy travel, roller dimensions, PID, Motion Magic, gravity FF voltages, current limits, roller speeds |
+| Per-camera 6-DOF poses              | X, Y, Z, roll, pitch, yaw for each of 6 cameras                                                                      |
+| Vision std devs & ball-chase PID    | `kMultiTagStdDevs`, `kBallChaseYawP`, …                                                                              |
+| Ball detection thresholds           | baseline currents, loaded/empty/full thresholds                                                                      |
+| Swerve geometry                     | `kTrackWidthMeters`, `kWheelBaseMeters`                                                                              |
+| CANcoder offsets                    | one per module                                                                                                       |
 
 ### Full configuration instructions
 
 See [`GUIDELINE.md`](GUIDELINE.md) for:
+
 - Step-by-step configuration order (19 steps, hardware vs software)
 - Exact measurement procedures for every physical value
 - PID tuning procedures for every subsystem
@@ -628,15 +642,16 @@ See [`GUIDELINE.md`](GUIDELINE.md) for:
 
 `SysIdCommands.java` provides WPILib SysId routines for characterizing all motors.
 
-| Routine | Motor | Use For |
-|---|---|---|
-| `createDriveRoutine(drive)` | Swerve drive motors | `kDriveS`, `kDriveV`, `kDriveA` |
-| `createFlywheelRoutine(shooter)` | Flywheel | `kFlywheelS`, `kFlywheelV` |
-| `createHoodRoutine(shooter)` | Hood | `kHoodG`, `kHoodP` |
-| `createTurretRoutine(shooter)` | Turret | `kTurretP` |
-| `createIntakeDeployRoutine(intake)` | Left deploy motor | `kDeployS`, `kDeployP` |
+| Routine                             | Motor               | Use For                         |
+| ----------------------------------- | ------------------- | ------------------------------- |
+| `createDriveRoutine(drive)`         | Swerve drive motors | `kDriveS`, `kDriveV`, `kDriveA` |
+| `createFlywheelRoutine(shooter)`    | Flywheel            | `kFlywheelS`, `kFlywheelV`      |
+| `createHoodRoutine(shooter)`        | Hood                | `kHoodG`, `kHoodP`              |
+| `createTurretRoutine(shooter)`      | Turret              | `kTurretP`                      |
+| `createIntakeDeployRoutine(intake)` | Left deploy motor   | `kDeployS`, `kDeployP`          |
 
 **Procedure:**
+
 1. Add SysId command bindings to a test-mode controller in `RobotContainer`
 2. Enable Test mode in DriverStation
 3. Run quasistatic forward → quasistatic reverse → dynamic forward → dynamic reverse
@@ -670,21 +685,21 @@ See [`GUIDELINE.md`](GUIDELINE.md) for:
 ./gradlew test
 ```
 
-| Test File | Coverage |
-|---|---|
-| `IntakeTest` | Gravity table interpolation/monotonicity, deploy positions, tolerance, stall detection, roller speeds, PID constants |
-| `ShooterTest` | Flywheel lookup tables, hood angle interpolation, turret wrapping, shoot-while-moving compensation |
-| `VisionTest` | Pose Z-axis bounds, field boundaries, pose-jump rejection, timestamp filtering, std dev scaling, ambiguity |
-| `SwerveDriveTest` | Slip detection, gyro drift, second-order prediction, voltage compensation, X-lock pattern |
-| `SwerveModuleTest` | Cosine compensation, anti-jitter threshold, signal health, drive position conversions |
-| `FeederTest` | Feed speed ratio, beam break edge detection, stall detection |
-| `SpindexerTest` | Running state threshold, stall detection, speed hierarchy, unjam timing |
-| `LEDsTest` | Flash, pulse, breathe, strobe, chase animation math |
-| `SuperstructureTest` | State machine transitions |
-| `ShooterTableTest` | Shooter physics lookup table generation |
-| `BallPresenceEstimatorTest` | Current baseline calibration, ball detection thresholds |
-| `HubStateTrackerTest` | Hub shift schedule, FMS data parsing |
-| `VisionTest` | All pose estimation filtering stages |
+| Test File                   | Coverage                                                                                                             |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `IntakeTest`                | Gravity table interpolation/monotonicity, deploy positions, tolerance, stall detection, roller speeds, PID constants |
+| `ShooterTest`               | Flywheel lookup tables, hood angle interpolation, turret wrapping, shoot-while-moving compensation                   |
+| `VisionTest`                | Pose Z-axis bounds, field boundaries, pose-jump rejection, timestamp filtering, std dev scaling, ambiguity           |
+| `SwerveDriveTest`           | Slip detection, gyro drift, second-order prediction, voltage compensation, X-lock pattern                            |
+| `SwerveModuleTest`          | Cosine compensation, anti-jitter threshold, signal health, drive position conversions                                |
+| `FeederTest`                | Feed speed ratio, beam break edge detection, stall detection                                                         |
+| `SpindexerTest`             | Running state threshold, stall detection, speed hierarchy, unjam timing                                              |
+| `LEDsTest`                  | Flash, pulse, breathe, strobe, chase animation math                                                                  |
+| `SuperstructureTest`        | State machine transitions                                                                                            |
+| `ShooterTableTest`          | Shooter physics lookup table generation                                                                              |
+| `BallPresenceEstimatorTest` | Current baseline calibration, ball detection thresholds                                                              |
+| `HubStateTrackerTest`       | Hub shift schedule, FMS data parsing                                                                                 |
+| `VisionTest`                | All pose estimation filtering stages                                                                                 |
 
 ---
 
@@ -703,6 +718,7 @@ See [`GUIDELINE.md`](GUIDELINE.md) for:
 **Simulation:** `SwerveDriveSim` provides realistic swerve module physics using `DCMotorSim` and Phoenix 6 simulation APIs. PathPlanner pathfinding runs in simulation. Vision cameras return no results in simulation.
 
 **Build configuration (`build.gradle`):**
+
 - Java 17 source/target compatibility
 - `includeDesktopSupport = true` — enables simulation
 - GradleRIO `2026.2.1`
@@ -714,69 +730,69 @@ See [`GUIDELINE.md`](GUIDELINE.md) for:
 
 ### Drivetrain
 
-| Specification | Value |
-|---|---|
-| Modules | 4× SDS MK4i L2 |
-| Drive / Steer Motors | Kraken X60 (TalonFX) |
-| Encoders | CANcoder (absolute) |
-| IMU | Pigeon2 |
-| Drive Gear Ratio | 6.75:1 |
-| Steer Gear Ratio | 21.43:1 (150/7) |
-| Wheel Diameter | 4 in (0.1016 m) |
-| Track Width | 22.75 in (0.578 m) |
-| Wheelbase | 22.75 in (0.578 m) |
-| Theoretical Max Speed | ~4.75 m/s |
-| Effective Max Speed | ~4.5 m/s (95%) |
-| CAN Bus | CANivore (`"CANivore"`) |
-| Odometry Rate | 250 Hz |
+| Specification         | Value                   |
+| --------------------- | ----------------------- |
+| Modules               | 4× SDS MK4i L2          |
+| Drive / Steer Motors  | Kraken X60 (TalonFX)    |
+| Encoders              | CANcoder (absolute)     |
+| IMU                   | Pigeon2                 |
+| Drive Gear Ratio      | 6.75:1                  |
+| Steer Gear Ratio      | 21.43:1 (150/7)         |
+| Wheel Diameter        | 4 in (0.1016 m)         |
+| Track Width           | 22.75 in (0.578 m)      |
+| Wheelbase             | 22.75 in (0.578 m)      |
+| Theoretical Max Speed | ~4.75 m/s               |
+| Effective Max Speed   | ~4.5 m/s (95%)          |
+| CAN Bus               | CANivore (`"CANivore"`) |
+| Odometry Rate         | 250 Hz                  |
 
 ### CAN Bus IDs
 
-| Device | ID |
-|---|---|
-| Front Left Drive | 1 |
-| Front Left Steer | 2 |
-| Front Left CANcoder | 3 |
-| Front Right Drive | 4 |
-| Front Right Steer | 5 |
-| Front Right CANcoder | 6 |
-| Back Left Drive | 7 |
-| Back Left Steer | 8 |
-| Back Left CANcoder | 9 |
-| Back Right Drive | 10 |
-| Back Right Steer | 11 |
-| Back Right CANcoder | 12 |
-| Pigeon2 IMU | 13 |
-| Flywheel Motor | 20 |
-| Hood Motor | 21 |
-| Turret Motor | 22 |
-| Feeder Motor | 23 |
-| Left Deploy Motor | 24 |
-| Right Deploy Motor | 25 |
-| Roller Motor | 26 |
-| Spindexer Motor | 27 |
+| Device               | ID  |
+| -------------------- | --- |
+| Front Left Drive     | 1   |
+| Front Left Steer     | 2   |
+| Front Left CANcoder  | 3   |
+| Front Right Drive    | 4   |
+| Front Right Steer    | 5   |
+| Front Right CANcoder | 6   |
+| Back Left Drive      | 7   |
+| Back Left Steer      | 8   |
+| Back Left CANcoder   | 9   |
+| Back Right Drive     | 10  |
+| Back Right Steer     | 11  |
+| Back Right CANcoder  | 12  |
+| Pigeon2 IMU          | 13  |
+| Flywheel Motor       | 20  |
+| Hood Motor           | 21  |
+| Turret Motor         | 22  |
+| Feeder Motor         | 23  |
+| Left Deploy Motor    | 24  |
+| Right Deploy Motor   | 25  |
+| Roller Motor         | 26  |
+| Spindexer Motor      | 27  |
 
 > All CAN IDs are configured in `RobotConfig.java` — change them there if wiring differs.
 
 ### I/O Ports
 
-| Port | Device | Config |
-|---|---|---|
-| DIO (see `RobotConfig.kBeamBreakDIOPort`) | Feeder beam break | `RobotConfig.java` |
-| PWM (see `RobotConfig.kLedPort`) | Addressable LED strip | `RobotConfig.java` |
+| Port                                      | Device                | Config             |
+| ----------------------------------------- | --------------------- | ------------------ |
+| DIO (see `RobotConfig.kBeamBreakDIOPort`) | Feeder beam break     | `RobotConfig.java` |
+| PWM (see `RobotConfig.kLedPort`)          | Addressable LED strip | `RobotConfig.java` |
 
 ### Default Current Limits
 
 All configurable in `RobotConfig.java`:
 
-| Motor | Supply Limit | Stator Limit |
-|---|---|---|
-| Drive (per module) | 60 A | 80 A |
-| Steer (per module) | 30 A | — |
-| Feeder | 30 A | — |
-| Left / Right Deploy | 30 A each | — |
-| Roller | 40 A | — |
-| Spindexer | 30 A | — |
+| Motor               | Supply Limit | Stator Limit |
+| ------------------- | ------------ | ------------ |
+| Drive (per module)  | 60 A         | 80 A         |
+| Steer (per module)  | 30 A         | —            |
+| Feeder              | 30 A         | —            |
+| Left / Right Deploy | 30 A each    | —            |
+| Roller              | 40 A         | —            |
+| Spindexer           | 30 A         | —            |
 
 ---
 
@@ -833,7 +849,6 @@ robot2026/
 ├── vendordeps/                                 # Vendor dependency JSON files
 ├── build.gradle                                # GradleRIO 2026.2.1 build config
 ├── GUIDELINE.md                                # Step-by-step robot configuration guide
-├── CLAUDE.md                                   # AI assistant context
 └── WPILib-License.md
 ```
 
@@ -841,15 +856,15 @@ robot2026/
 
 ## Vendor Dependencies
 
-| Library | Version | Purpose |
-|---|---|---|
-| [AdvantageKit](https://github.com/Mechanical-Advantage/AdvantageKit) | 26.0.0 | Structured logging with deterministic replay |
-| [Phoenix 6](https://pro.docs.ctr-electronics.com/) | 26.1.1 | CTRE hardware (TalonFX, CANcoder, Pigeon2) |
-| [PhotonLib](https://docs.photonvision.org/) | v2026.2.2 | AprilTag vision + object detection |
-| [REVLib](https://docs.revrobotics.com/) | 2026.0.1 | REV Robotics hardware support |
-| [PathplannerLib](https://pathplanner.dev/) | 2026.1.2 | Dynamic pathfinding (AD* algorithm) |
-| [ChoreoLib](https://choreo.autos/) | 2026.0.1 | Pre-planned trajectory following |
-| WPILibNewCommands | 1.0.0 | Command-based framework |
+| Library                                                              | Version   | Purpose                                      |
+| -------------------------------------------------------------------- | --------- | -------------------------------------------- |
+| [AdvantageKit](https://github.com/Mechanical-Advantage/AdvantageKit) | 26.0.0    | Structured logging with deterministic replay |
+| [Phoenix 6](https://pro.docs.ctr-electronics.com/)                   | 26.1.1    | CTRE hardware (TalonFX, CANcoder, Pigeon2)   |
+| [PhotonLib](https://docs.photonvision.org/)                          | v2026.2.2 | AprilTag vision + object detection           |
+| [REVLib](https://docs.revrobotics.com/)                              | 2026.0.1  | REV Robotics hardware support                |
+| [PathplannerLib](https://pathplanner.dev/)                           | 2026.1.2  | Dynamic pathfinding (AD\* algorithm)         |
+| [ChoreoLib](https://choreo.autos/)                                   | 2026.0.1  | Pre-planned trajectory following             |
+| WPILibNewCommands                                                    | 1.0.0     | Command-based framework                      |
 
 Vendor JSON files are in `vendordeps/`. Update via WPILib VS Code extension or Phoenix Tuner X.
 
@@ -861,4 +876,4 @@ Open source under the WPILib BSD license. See `WPILib-License.md`.
 
 ---
 
-*FRC Team 7840 — 2026 Season*
+_FRC Team 7840 — 2026 Season_
