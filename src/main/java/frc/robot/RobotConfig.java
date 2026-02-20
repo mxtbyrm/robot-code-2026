@@ -375,6 +375,12 @@ public final class RobotConfig {
     public static final double kTurretP = 30.0;
     public static final double kTurretI = 0.0;
     public static final double kTurretD = 0.5;
+    // Spring cable feedforward: compensates for Vulcan spring restoring torque.
+    // The spring pulls the turret back toward 0° proportional to angle.
+    // Increase this value until the turret holds position without drifting back.
+    // Units: volts per degree of turret rotation from center.
+    // Start at 0.0, tune by increasing ~0.005 at a time on the robot.
+    public static final double kTurretSpringFeedForwardVPerDeg = 0.0;
 
     // Alliance zone dump — fixed params for lobbing FUEL into the alliance zone.
     // No auto-aim: turret faces backward, hood and flywheel set to a fixed lob shot.

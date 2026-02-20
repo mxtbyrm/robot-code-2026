@@ -255,6 +255,7 @@ public final class ShooterConstants {
     public static final double kTurretP = RobotConfig.kTurretP;
     public static final double kTurretI = RobotConfig.kTurretI;
     public static final double kTurretD = RobotConfig.kTurretD;
+    public static final double kTurretSpringFeedForwardVPerDeg = RobotConfig.kTurretSpringFeedForwardVPerDeg;
 
     // Turret tolerance
     public static final double kTurretToleranceDegrees  = 1.0;

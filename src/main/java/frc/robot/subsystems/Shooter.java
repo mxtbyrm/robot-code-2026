@@ -460,6 +460,8 @@ public class Shooter extends SubsystemBase {
         Logger.recordOutput("Shooter/TurretTargetDeg", targetTurretAngleDeg);
         Logger.recordOutput("Shooter/TurretActualDeg", cachedTurretPositionDeg);
         Logger.recordOutput("Shooter/TurretAtTarget", isTurretAtTarget());
+        Logger.recordOutput("Shooter/TurretSpringFF",
+                ShooterConstants.kTurretSpringFeedForwardVPerDeg * cachedTurretPositionDeg);
         Logger.recordOutput("Shooter/TrackingEnabled", trackingEnabled);
         Logger.recordOutput("Shooter/AllianceZoneMode", allianceZoneMode);
         Logger.recordOutput("Shooter/ReadyToShoot", isReadyToShoot());
@@ -779,7 +781,14 @@ public class Shooter extends SubsystemBase {
                 angleDegrees,
                 ShooterConstants.kTurretMinAngleDegrees,
                 ShooterConstants.kTurretMaxAngleDegrees);
-        turretMotor.setControl(turretRequest.withPosition(targetTurretAngleDeg / 360.0));
+        // Spring cable feedforward: the Vulcan spring exerts a restoring torque proportional
+        // to the turret's displacement from center (0°). This compensates so the PID doesn't
+        // have to fight the spring — preventing drift when holding off-center positions.
+        // Tune kTurretSpringFeedForwardVPerDeg in RobotConfig until drift stops.
+        double springFF = ShooterConstants.kTurretSpringFeedForwardVPerDeg * cachedTurretPositionDeg;
+        turretMotor.setControl(turretRequest
+                .withPosition(targetTurretAngleDeg / 360.0)
+                .withFeedForward(springFF));
     }
 
     public double getTurretAngleDegrees() {
