@@ -422,6 +422,28 @@ public class Intake extends SubsystemBase {
                 .withName("Stow");
     }
 
+    // ==================== SIMULATION SUPPORT ====================
+
+    /** Exposes left deploy TalonFX sim state for physics simulation. */
+    public com.ctre.phoenix6.sim.TalonFXSimState getLeftDeploySimState() {
+        return leftDeployMotor.getSimState();
+    }
+
+    /** Exposes right deploy TalonFX sim state for physics simulation. */
+    public com.ctre.phoenix6.sim.TalonFXSimState getRightDeploySimState() {
+        return rightDeployMotor.getSimState();
+    }
+
+    /** Exposes roller TalonFX sim state for physics simulation. */
+    public com.ctre.phoenix6.sim.TalonFXSimState getRollerSimState() {
+        return rollerMotor.getSimState();
+    }
+
+    /** Returns whether the roller is currently spinning (for ball simulation). */
+    public boolean isRollerRunning() {
+        return Math.abs(rollerMotor.getDutyCycle().getValueAsDouble()) > 0.05;
+    }
+
     // ==================== SYSID CHARACTERIZATION ====================
 
     /** Apply raw voltage to the deploy motor (for SysId). */

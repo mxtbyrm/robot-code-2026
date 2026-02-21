@@ -6,6 +6,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 
+import frc.robot.sim.RobotSimulator;
 import frc.robot.subsystems.Superstructure;
 
 import org.littletonrobotics.junction.LoggedRobot;
@@ -21,6 +22,9 @@ public class Robot extends LoggedRobot {
   private Command m_autonomousCommand;
 
   private final RobotContainer m_robotContainer;
+
+  // Created in simulationInit() — null on the real robot.
+  private RobotSimulator m_robotSimulator;
 
   public Robot() {
     // ==================== ADVANTAGEKIT LOGGING ====================
@@ -143,8 +147,15 @@ public class Robot extends LoggedRobot {
   public void testPeriodic() {}
 
   @Override
-  public void simulationInit() {}
+  public void simulationInit() {
+    // All subsystem singletons are already initialised by RobotContainer at this point.
+    m_robotSimulator = new RobotSimulator();
+  }
 
   @Override
-  public void simulationPeriodic() {}
+  public void simulationPeriodic() {
+    if (m_robotSimulator != null) {
+      m_robotSimulator.update(getPeriod());
+    }
+  }
 }

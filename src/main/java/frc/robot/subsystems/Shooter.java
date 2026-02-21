@@ -918,6 +918,23 @@ public class Shooter extends SubsystemBase {
                 .withName("Wait Until Ready");
     }
 
+    // ==================== SIMULATION SUPPORT ====================
+
+    /** Exposes flywheel TalonFX sim state for physics simulation. */
+    public com.ctre.phoenix6.sim.TalonFXSimState getFlywheelSimState() {
+        return flywheelMotor.getSimState();
+    }
+
+    /** Exposes hood TalonFX sim state for physics simulation. */
+    public com.ctre.phoenix6.sim.TalonFXSimState getHoodSimState() {
+        return hoodMotor.getSimState();
+    }
+
+    /** Exposes turret TalonFX sim state for physics simulation. */
+    public com.ctre.phoenix6.sim.TalonFXSimState getTurretSimState() {
+        return turretMotor.getSimState();
+    }
+
     // ==================== SYSID CHARACTERIZATION ====================
 
     /** Apply raw voltage to the flywheel motor (for SysId). */

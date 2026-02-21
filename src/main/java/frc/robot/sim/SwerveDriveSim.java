@@ -1,4 +1,4 @@
-package frc.robot.subsystems;
+package frc.robot.sim;
 
 import com.ctre.phoenix6.sim.Pigeon2SimState;
 import com.ctre.phoenix6.sim.TalonFXSimState;
@@ -14,6 +14,7 @@ import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.simulation.DCMotorSim;
 
 import frc.robot.constants.SwerveConstants;
+import frc.robot.subsystems.SwerveModule;
 
 /**
  * Physics simulation for the swerve drivetrain.

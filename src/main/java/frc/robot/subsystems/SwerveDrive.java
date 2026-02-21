@@ -35,6 +35,7 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import frc.robot.constants.SwerveConstants;
+import frc.robot.sim.SwerveDriveSim;
 import frc.robot.RobotState;
 
 import org.littletonrobotics.junction.Logger;

@@ -201,6 +201,13 @@ public class Spindexer extends SubsystemBase {
      * Run spindexer at intake speed while held.
      * Use in parallel with intake command.
      */
+    // ==================== SIMULATION SUPPORT ====================
+
+    /** Exposes spindexer TalonFX sim state for physics simulation. */
+    public com.ctre.phoenix6.sim.TalonFXSimState getSpindexerSimState() {
+        return spindexerMotor.getSimState();
+    }
+
     public Command intakeCommand() {
         return Commands.startEnd(
                 this::runIntakeSpeed,

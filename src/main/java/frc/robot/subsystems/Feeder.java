@@ -307,6 +307,18 @@ public class Feeder extends SubsystemBase {
      * the correct distance-based speed.
      * <p>On release: feeder stops.
      */
+    // ==================== SIMULATION SUPPORT ====================
+
+    /** Exposes feeder TalonFX sim state for physics simulation. */
+    public com.ctre.phoenix6.sim.TalonFXSimState getFeederSimState() {
+        return feederMotor.getSimState();
+    }
+
+    /** Exposes the beam-break DigitalInput so simulation can drive it via DIOSim. */
+    public DigitalInput getBeamBreakInput() {
+        return beamBreak;
+    }
+
     public Command feedCommand() {
         return Commands.startEnd(
                 this::requestFeed,
