@@ -125,6 +125,7 @@ public class SwerveModule {
         steerConfig.Slot0.kP = SwerveConstants.kSteerP;
         steerConfig.Slot0.kI = SwerveConstants.kSteerI;
         steerConfig.Slot0.kD = SwerveConstants.kSteerD;
+        steerConfig.Slot0.kS = SwerveConstants.kSteerS;
 
         steerConfig.CurrentLimits.SupplyCurrentLimitEnable = true;
         steerConfig.CurrentLimits.SupplyCurrentLimit = SwerveConstants.kSteerCurrentLimit;
@@ -290,14 +291,29 @@ public class SwerveModule {
         driveMotor.setVoltage(volts);
     }
 
-    /** Gets the drive motor velocity in rotations per second (for SysId logging). */
+    /** Gets the drive motor velocity in wheel-shaft RPS (for SysId logging). */
     public double getDriveVelocityRPS() {
         return driveVelocitySignal.getValueAsDouble();
     }
 
-    /** Gets the drive motor position in rotations (for SysId logging). */
+    /** Gets the drive motor position in wheel-shaft rotations (for SysId logging). */
     public double getDrivePositionRotations() {
         return cachedDrivePositionRot;
+    }
+
+    /** Apply raw voltage to the steer motor (for SysId characterization). */
+    public void setSteerVoltage(double volts) {
+        steerMotor.setVoltage(volts);
+    }
+
+    /** Gets the steer motor velocity in azimuth RPS (mechanism, 1 = full wheel rotation). */
+    public double getSteerVelocityRPS() {
+        return steerVelocitySignal.getValueAsDouble();
+    }
+
+    /** Gets the steer motor position in azimuth rotations (mechanism, 0–1 per full rotation). */
+    public double getSteerPositionRotations() {
+        return cachedSteerPositionRot;
     }
 
     // ==================== HEALTH ====================

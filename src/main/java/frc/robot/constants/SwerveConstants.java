@@ -67,6 +67,7 @@ public final class SwerveConstants {
     public static final double kSteerP = RobotConfig.kSteerP;
     public static final double kSteerI = RobotConfig.kSteerI;
     public static final double kSteerD = RobotConfig.kSteerD;
+    public static final double kSteerS = RobotConfig.kSteerS;
 
     // ==================== AUTO TRAJECTORY FOLLOWING PID ====================
     // These are used by the Choreo trajectory follower to correct position error

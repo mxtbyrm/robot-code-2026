@@ -59,6 +59,33 @@ public class SysIdCommands {
         );
     }
 
+    // ==================== SWERVE STEER ====================
+
+    public static SysIdRoutine createSteerRoutine(SwerveDrive drive) {
+        return new SysIdRoutine(
+                new SysIdRoutine.Config(
+                        Volts.per(Second).of(0.5),
+                        Volts.of(3.0),
+                        Seconds.of(5.0)
+                ),
+                new SysIdRoutine.Mechanism(
+                        voltage -> drive.runSteerCharacterization(voltage.in(Volts)),
+                        log -> {
+                            SwerveModule[] modules = drive.getModules();
+                            for (int i = 0; i < modules.length; i++) {
+                                log.motor("steer-" + modules[i].getName())
+                                        .voltage(Volts.of(0))
+                                        .angularPosition(Rotations.of(
+                                                modules[i].getSteerPositionRotations()))
+                                        .angularVelocity(RotationsPerSecond.of(
+                                                modules[i].getSteerVelocityRPS()));
+                            }
+                        },
+                        drive
+                )
+        );
+    }
+
     // ==================== SHOOTER FLYWHEEL ====================
 
     public static SysIdRoutine createFlywheelRoutine(Shooter shooter) {

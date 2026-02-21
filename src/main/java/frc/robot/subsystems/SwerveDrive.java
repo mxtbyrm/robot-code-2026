@@ -593,6 +593,18 @@ public class SwerveDrive extends SubsystemBase {
         }
     }
 
+    /**
+     * Applies a raw voltage to all steer motors simultaneously.
+     * Used by SysId to characterize steer motor feedforward (kS) and PID gains.
+     * Drive motors are stopped during steer characterization.
+     */
+    public void runSteerCharacterization(double volts) {
+        for (SwerveModule module : modules) {
+            module.setDriveVoltage(0);
+            module.setSteerVoltage(volts);
+        }
+    }
+
     /** Returns the modules array for SysId logging. */
     public SwerveModule[] getModules() {
         return modules;

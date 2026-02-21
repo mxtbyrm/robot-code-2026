@@ -12,6 +12,10 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+
+import frc.robot.commands.SysIdCommands;
 
 import frc.robot.constants.OperatorConstants;
 import frc.robot.commands.Autos;
@@ -133,6 +137,7 @@ public class RobotContainer {
         // Configure button bindings
         configureDriverBindings();
         configureOperatorBindings();
+        configureSysIdBindings();
 
         // ==================== PRE-MATCH SYSTEM CHECK (visible on dashboard) ====================
         SmartDashboard.putData("System Check", systemCheckCommand());
@@ -341,6 +346,50 @@ public class RobotContainer {
                 Commands.runOnce(() -> Shooter.getInstance().adjustHoodTrim(2.0)));
         operatorController.povDown().onTrue(
                 Commands.runOnce(() -> Shooter.getInstance().adjustHoodTrim(-2.0)));
+    }
+
+    // ==================== SYSID BINDINGS (TEST MODE ONLY) ====================
+    //
+    // These bindings are guarded by RobotModeTriggers.test() — they ONLY activate when
+    // the Driver Station is in Test Mode. They share the operator controller buttons
+    // but cannot conflict with teleop bindings because test ≠ teleop.
+    //
+    // Workflow:
+    //   1. In Driver Station, switch to Test Mode.
+    //   2. Select the subsystem to characterize on SmartDashboard → "SysId/Routine".
+    //   3. Enable the robot. Hold each button for the full test duration:
+    //        Operator A → Quasistatic Forward
+    //        Operator B → Quasistatic Reverse
+    //        Operator X → Dynamic Forward
+    //        Operator Y → Dynamic Reverse
+    //   4. Disable. Open the log in the WPILib SysId tool and copy kS, kV, kA into RobotConfig.
+
+    private void configureSysIdBindings() {
+        SendableChooser<SysIdRoutine> sysIdChooser = new SendableChooser<>();
+        sysIdChooser.setDefaultOption("Drive",        SysIdCommands.createDriveRoutine(SwerveDrive.getInstance()));
+        sysIdChooser.addOption("Steer",               SysIdCommands.createSteerRoutine(SwerveDrive.getInstance()));
+        sysIdChooser.addOption("Flywheel",            SysIdCommands.createFlywheelRoutine(Shooter.getInstance()));
+        sysIdChooser.addOption("Hood",                SysIdCommands.createHoodRoutine(Shooter.getInstance()));
+        sysIdChooser.addOption("Turret",              SysIdCommands.createTurretRoutine(Shooter.getInstance()));
+        sysIdChooser.addOption("Intake Deploy",       SysIdCommands.createIntakeDeployRoutine(Intake.getInstance()));
+        SmartDashboard.putData("SysId/Routine", sysIdChooser);
+
+        var testMode = RobotModeTriggers.test();
+
+        // A = Quasistatic Forward, B = Quasistatic Reverse
+        // X = Dynamic Forward,    Y = Dynamic Reverse
+        operatorController.a().and(testMode).whileTrue(
+                Commands.deferredProxy(() -> sysIdChooser.getSelected()
+                        .quasistatic(SysIdRoutine.Direction.kForward)));
+        operatorController.b().and(testMode).whileTrue(
+                Commands.deferredProxy(() -> sysIdChooser.getSelected()
+                        .quasistatic(SysIdRoutine.Direction.kReverse)));
+        operatorController.x().and(testMode).whileTrue(
+                Commands.deferredProxy(() -> sysIdChooser.getSelected()
+                        .dynamic(SysIdRoutine.Direction.kForward)));
+        operatorController.y().and(testMode).whileTrue(
+                Commands.deferredProxy(() -> sysIdChooser.getSelected()
+                        .dynamic(SysIdRoutine.Direction.kReverse)));
     }
 
     /**

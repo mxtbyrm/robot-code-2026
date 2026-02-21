@@ -95,17 +95,29 @@ public final class RobotConfig {
     // ==================== 5. SWERVE PID / FF / DRIVER PARAMS ====================
 
     // Drive motor PID + FF (velocity control)
-    public static final double kDriveP = 0.1;
+    // ── Unit basis: SensorToMechanismRatio = 6.75, so all feedback is in WHEEL-SHAFT rotations.
+    //    Setpoints are passed as wheel-shaft RPS; gains must match that unit.
+    //
+    //    kV derivation:
+    //      Motor free speed (Kraken X60 FOC @ 12 V) ≈ 5800 RPM = 96.67 RPS (rotor)
+    //      Wheel-shaft free speed = 96.67 / 6.75 = 14.32 RPS
+    //      kV = 12 V / 14.32 RPS = 0.84 V per (wheel-shaft RPS)
+    //
+    //    Run SysId drive routine to refine kS, kV, kA on real carpet.
+    public static final double kDriveP = 0.5;
     public static final double kDriveI = 0.0;
     public static final double kDriveD = 0.0;
-    public static final double kDriveS = 0.0;   // Static friction feedforward (volts)
-    public static final double kDriveV = 0.12;  // Velocity feedforward (volts per rps)
-    public static final double kDriveA = 0.0;   // Acceleration feedforward
+    public static final double kDriveS = 0.15;  // Static friction (V) — Kraken X60 on carpet
+    public static final double kDriveV = 0.84;  // Velocity FF (V / wheel-shaft-RPS); see derivation above
+    public static final double kDriveA = 0.01;  // Acceleration FF (V / (wheel-shaft-RPS/s)); refine with SysId
 
-    // Steer motor PID (position control)
+    // Steer motor PID + static FF (position control, mechanism = azimuth rotations 0–1)
+    // kS compensates for stiction in the 150/7 azimuth gearbox so the module snaps
+    // to angle quickly even from small errors. Run SysId steer routine to refine.
     public static final double kSteerP = 100.0;
     public static final double kSteerI = 0.0;
     public static final double kSteerD = 0.5;
+    public static final double kSteerS = 0.12;  // Static friction (V) — steer gearbox stiction
 
     // Auto trajectory following PID (Choreo/PathPlanner)
     public static final double kAutoTranslationP = 10.0;
@@ -346,12 +358,19 @@ public final class RobotConfig {
     public static final double kBiasFactorFar = 1.00;
 
     // Flywheel velocity PID + FF
+    // ── Unit basis: SensorToMechanismRatio NOT set (assumed 1.0), so feedback is in ROTOR RPS.
+    //    kMaxFlywheelRPS = 90 > mechanism free speed (48.33 RPS), confirming rotor units.
+    //
+    //    kV derivation (rotor units):
+    //      kV = 12 V / 96.67 RPS_rotor = 0.124 ≈ 0.12 V per rotor-RPS  ← already correct
+    //
+    //    Run SysId flywheel routine to refine kS, kA on real robot.
     public static final double kFlywheelP = 0.5;
     public static final double kFlywheelI = 0.0;
     public static final double kFlywheelD = 0.0;
-    public static final double kFlywheelS = 0.0;   // Static friction (volts)
-    public static final double kFlywheelV = 0.12;  // Velocity FF (volts per rps)
-    public static final double kFlywheelA = 0.0;   // Acceleration FF
+    public static final double kFlywheelS = 0.10;  // Static friction (V) — estimated Kraken X60 stiction
+    public static final double kFlywheelV = 0.12;  // Velocity FF (V / rotor-RPS) — physics-verified
+    public static final double kFlywheelA = 0.01;  // Acceleration FF (V / (rotor-RPS/s)) — refine with SysId
 
     /** Acceptable velocity error before flywheel is considered "at speed" (rps). */
     public static final double kFlywheelToleranceRPS = 2.0;
