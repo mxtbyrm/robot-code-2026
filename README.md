@@ -171,9 +171,20 @@ Individual MK4i module control (one instance per module, created by SwerveDrive)
 
 ---
 
-### SwerveDriveSim
+### Simulation (`sim/` package)
 
-Desktop simulation support using WPILib `DCMotorSim` and Phoenix 6 simulation state APIs. Active only when `RobotBase.isSimulation()` is true.
+Full desktop simulation using WPILib `DCMotorSim`, `SingleJointedArmSim`, and Phoenix 6 simulation APIs. Active only when `RobotBase.isSimulation()` is true.
+
+`RobotSimulator` is the central coordinator and runs a ball state machine (Ground → Hopper at ~1 ball/s when arm deployed + roller running → Feeder in 0.35 s with spindexer/feeder running → Shot in 0.20 s with flywheel at speed). Beam-break output is driven from the sim state so `Superstructure` ball counting works correctly in simulation.
+
+| Sim Class | What it covers |
+| --- | --- |
+| `RobotSimulator` | Central coordinator + ball state machine |
+| `SwerveDriveSim` | Swerve drive + steer module physics |
+| `ShooterSim` | Flywheel, hood, turret |
+| `IntakeSim` | Deploy arm + roller |
+| `FeederSpindexerSim` | Feeder + spindexer; simulates beam-break sensor |
+| `VisionSim` | PhotonVision AprilTag field simulation |
 
 ---
 
@@ -640,24 +651,29 @@ See [`GUIDELINE.md`](GUIDELINE.md) for:
 
 ## SysId Characterization
 
-`SysIdCommands.java` provides WPILib SysId routines for characterizing all motors.
+`SysIdCommands.java` provides WPILib SysId routines for all motors. Bindings are **automatically wired in test mode** — no code changes needed. Select the routine from the **`"SysId/Routine"` chooser** on SmartDashboard, then use the operator controller in Driver Station Test mode.
 
-| Routine                             | Motor               | Use For                         |
-| ----------------------------------- | ------------------- | ------------------------------- |
-| `createDriveRoutine(drive)`         | Swerve drive motors | `kDriveS`, `kDriveV`, `kDriveA` |
-| `createFlywheelRoutine(shooter)`    | Flywheel            | `kFlywheelS`, `kFlywheelV`      |
-| `createHoodRoutine(shooter)`        | Hood                | `kHoodG`, `kHoodP`              |
-| `createTurretRoutine(shooter)`      | Turret              | `kTurretP`                      |
-| `createIntakeDeployRoutine(intake)` | Left deploy motor   | `kDeployS`, `kDeployP`          |
+| Routine                             | Motor               | Use For                              |
+| ----------------------------------- | ------------------- | ------------------------------------ |
+| `createDriveRoutine(drive)`         | Swerve drive motors | `kDriveS`, `kDriveV`, `kDriveA`      |
+| `createSteerRoutine(drive)`         | Swerve steer motors | `kSteerS`                            |
+| `createFlywheelRoutine(shooter)`    | Flywheel            | `kFlywheelS`, `kFlywheelV`           |
+| `createHoodRoutine(shooter)`        | Hood                | `kHoodG`, `kHoodP`                   |
+| `createTurretRoutine(shooter)`      | Turret              | `kTurretP`                           |
+| `createIntakeDeployRoutine(intake)` | Left deploy motor   | `kDeployS`, `kDeployP`               |
 
 **Procedure:**
 
-1. Add SysId command bindings to a test-mode controller in `RobotContainer`
-2. Enable Test mode in DriverStation
-3. Run quasistatic forward → quasistatic reverse → dynamic forward → dynamic reverse
+1. Select the routine from **`SysId/Routine`** on SmartDashboard
+2. Enable **Test mode** in the FRC Driver Station (not Teleop or Auto)
+3. On the **operator controller**, run the four tests in order:
+   - **A** → Quasistatic Forward
+   - **B** → Quasistatic Reverse
+   - **X** → Dynamic Forward
+   - **Y** → Dynamic Reverse
 4. Collect the `.wpilog` from USB
-5. Open in WPILib SysId tool, export kS/kV/kA values
-6. Enter the measured values into `RobotConfig.java`
+5. Open in the WPILib SysId tool, export `kS`, `kV`, `kA`
+6. Enter values into `RobotConfig.java`
 
 ---
 
@@ -715,7 +731,7 @@ See [`GUIDELINE.md`](GUIDELINE.md) for:
 ./gradlew clean              # Remove build artifacts
 ```
 
-**Simulation:** `SwerveDriveSim` provides realistic swerve module physics using `DCMotorSim` and Phoenix 6 simulation APIs. PathPlanner pathfinding runs in simulation. Vision cameras return no results in simulation.
+**Simulation:** The `sim/` package provides full robot physics: swerve drive (`SwerveDriveSim`), shooter, intake, feeder/spindexer, and vision (PhotonVision AprilTag field simulation via `VisionSim`). `RobotSimulator` coordinates all sim objects and runs a ball state machine. PathPlanner pathfinding works in simulation.
 
 **Build configuration (`build.gradle`):**
 
@@ -826,7 +842,6 @@ robot2026/
 │   │   │   ├── subsystems/
 │   │   │   │   ├── SwerveDrive.java
 │   │   │   │   ├── SwerveModule.java
-│   │   │   │   ├── SwerveDriveSim.java
 │   │   │   │   ├── Shooter.java
 │   │   │   │   ├── Superstructure.java
 │   │   │   │   ├── Intake.java
@@ -834,6 +849,13 @@ robot2026/
 │   │   │   │   ├── Spindexer.java
 │   │   │   │   ├── Vision.java
 │   │   │   │   └── LEDs.java
+│   │   │   ├── sim/
+│   │   │   │   ├── RobotSimulator.java             # Central coordinator + ball state machine
+│   │   │   │   ├── SwerveDriveSim.java             # Swerve module physics (DCMotorSim + Phoenix 6)
+│   │   │   │   ├── ShooterSim.java                 # Flywheel, hood, turret physics
+│   │   │   │   ├── IntakeSim.java                  # Deploy arm + roller physics
+│   │   │   │   ├── FeederSpindexerSim.java         # Ball transport + beam-break simulation
+│   │   │   │   └── VisionSim.java                  # PhotonVision AprilTag field simulation
 │   │   │   └── commands/
 │   │   │       ├── SwerveDriveCommand.java
 │   │   │       ├── Autos.java

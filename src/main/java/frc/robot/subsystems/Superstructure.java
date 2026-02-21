@@ -24,12 +24,23 @@ import org.littletonrobotics.junction.Logger;
  *
  * <h2>States:</h2>
  * <pre>
- * IDLE ──────────► INTAKING                         SHOOTING
- *   ▲                │                                  │
- *   │                ▼                                  │
- *   │            OUTTAKING / UNJAMMING                  │
- *   │                                                   │
- *   └───────────────────────────────────────────────────┘
+ *                          ┌──────────────┐
+ *         ┌────────────────┤     IDLE     ├──────────────────────────┐
+ *         │                └──────┬───────┘                          │
+ *    (left trigger)          (right trigger)                (right bumper)
+ *         │                       │                                  │
+ *         ▼                       ▼                                  ▼
+ *     INTAKING             PRE_FEED_REVERSE                SHOOTING_ALLIANCE
+ *                            (120 ms pulse)
+ *                          ┌──────┴──────────────────────┐
+ *                          ▼                             ▼
+ *                      SHOOTING             SHOOTING_WHILE_INTAKING
+ *
+ *   IDLE ──────────► OUTTAKING    (left bumper)
+ *   IDLE ──────────► UNJAMMING    (B button)
+ *
+ *   Any state ────────────────────────────────────────► DISABLED
+ *                          (robot disabled or operator START)
  * </pre>
  *
  * <h2>Ball counting:</h2>

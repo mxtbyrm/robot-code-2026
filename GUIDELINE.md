@@ -227,14 +227,14 @@ kWheelDiameterMeters = Units.inchesToMeters(4.0);
 ### Drive Motor PID + FF (velocity control)
 
 ```java
-kDriveP = 0.1;   kDriveI = 0.0;   kDriveD = 0.0;
-kDriveS = 0.0;   kDriveV = 0.12;  kDriveA = 0.0;
+kDriveP = 0.5;   kDriveI = 0.0;   kDriveD = 0.0;
+kDriveS = 0.15;  kDriveV = 0.84;  kDriveA = 0.01;
 ```
 
 **Best practice: use SysId to characterize kS, kV, kA first**, then set kP for residual error correction. See [SysId Characterization Workflow](#sysid-characterization-workflow).
 
 **Manual tuning order (if SysId is not available):**
-1. **`kDriveV` first** — `kDriveV ≈ 1 / freeSpeedRPS`. Kraken X60 free speed ≈ 100 RPS at 12 V → `kDriveV ≈ 0.01 V·s/rot`. Increase from 0 until the wheel tracks a constant velocity setpoint without needing P.
+1. **`kDriveV` first** — With `SensorToMechanismRatio = kDriveGearRatio` set on the TalonFX, all feedback and setpoints are in **wheel-shaft RPS** (not rotor RPS). Kraken X60 free speed ≈ 100 RPS rotor → wheel-shaft free speed ≈ 100 / 6.75 ≈ 14.8 RPS → `kDriveV ≈ 12 V / 14.8 RPS ≈ 0.81 V·s/rot`. Increase from 0 until the wheel tracks a constant velocity setpoint without needing P.
 2. **`kDriveS`** — apply a slowly increasing constant voltage until the wheel barely starts moving. That voltage is `kDriveS`.
 3. **`kDriveP`** — increase from 0 until velocity tracking error is corrected quickly without oscillation.
 4. Leave `kDriveI` and `kDriveA` at 0 unless you have persistent steady-state velocity error.
@@ -259,7 +259,7 @@ kSteerCurrentLimit        = 30.0;  // supply current
 ### Steer Motor PID
 
 ```java
-kSteerP = 100.0;   kSteerI = 0.0;   kSteerD = 0.5;
+kSteerP = 100.0;   kSteerI = 0.0;   kSteerD = 0.5;   kSteerS = 0.12;
 ```
 
 MK4i steer has low inertia — high P is normal and expected. If the wheel oscillates around the target angle, increase `kSteerD`. If it undershoots badly, increase `kSteerP`. The steer motor uses **Motion Magic** — tune `kSteerP` against the motion profile, not against a step input.
@@ -449,7 +449,7 @@ kBiasFactorFar  = 1.00;  // multiplier at maximum shooting distance (~6.5 m)
 
 ```java
 kFlywheelP = 0.5;   kFlywheelI = 0.0;   kFlywheelD = 0.0;
-kFlywheelS = 0.0;   kFlywheelV = 0.12;  kFlywheelA = 0.0;
+kFlywheelS = 0.10;  kFlywheelV = 0.12;  kFlywheelA = 0.01;
 kFlywheelToleranceRPS = 2.0;
 kIdleFlywheelRPS      = 15.0;
 kMaxFlywheelRPS       = 90.0;
@@ -781,18 +781,25 @@ kBackRightEncoderOffset  = 0.0;
 **SysId** (WPILib System Identification tool) measures your motor's true `kS` (static friction), `kV` (velocity constant), and `kA` (acceleration constant) empirically. These values produce better feedforward than guessing and reduce how much you need from PID.
 
 ### Which mechanisms to characterize
-- **Drive motors** (each wheel independently or as a group) — improves trajectory following
-- **Flywheel** — improves shot consistency, reduces spin-up time error
+
+- **Drive motors** — improves trajectory following; characterizes `kDriveS`, `kDriveV`, `kDriveA`
+- **Steer motors** — characterizes `kSteerS` (static friction of the azimuth gearbox)
+- **Flywheel** — improves shot consistency; characterizes `kFlywheelS`, `kFlywheelV`, `kFlywheelA`
 
 ### Procedure
 
-1. **In code:** `SysIdCommands.java` already contains the sysid routines for drive and flywheel. Bind them to controller buttons temporarily (or run via SmartDashboard commands).
-2. **Deploy** to robot on a flat, open area (need ~4–5 m of free space for drive sysid).
-3. **Open** WPILib SysId tool on your laptop.
-4. **Connect** to the robot NetworkTables (set team number in SysId).
-5. **Run** the four tests in order: Quasistatic Forward, Quasistatic Reverse, Dynamic Forward, Dynamic Reverse. Allow each to complete fully.
-6. **Load** the resulting log file into SysId. Read off `kS`, `kV`, `kA`.
-7. **Enter** values into `RobotConfig.java`.
+Controller bindings are **automatically wired in test mode** via a `SendableChooser` on SmartDashboard — no code changes are needed.
+
+1. **Select routine** from **`SysId/Routine`** on SmartDashboard (Drive, Steer, Flywheel, Hood, Turret, or Intake Deploy).
+2. **Deploy** to robot on a flat, open area (~4–5 m of free space for drive sysid).
+3. **Enable Test mode** in the FRC Driver Station.
+4. **Run the four tests** using the operator controller:
+   - **A** → Quasistatic Forward
+   - **B** → Quasistatic Reverse
+   - **X** → Dynamic Forward
+   - **Y** → Dynamic Reverse
+5. **Load** the resulting `.wpilog` into the WPILib SysId tool. Read off `kS`, `kV`, `kA`.
+6. **Enter** values into `RobotConfig.java`.
 
 ### Tips
 - Drive SysId: run with the robot on the actual field carpet — carpet friction differs from other surfaces.
@@ -1045,11 +1052,12 @@ AdvantageScope is the primary tool for understanding robot behavior. Use these l
 | `kDriveGearRatio` | 4 | 6.75 | — |
 | `kSteerGearRatio` | 4 | 150/7 | — |
 | `kWheelDiameterMeters` | 4 | 0.1016 | m |
-| `kDriveP/I/D/S/V/A` | 5 | 0.1/0/0/0/0.12/0 | — |
+| `kDriveP/I/D/S/V/A` | 5 | 0.5/0/0/0.15/0.84/0.01 | — |
 | `kDriveCurrentLimit` | 5 | 60.0 | A |
 | `kDriveStatorCurrentLimit` | 5 | 80.0 | A |
 | `kSteerCurrentLimit` | 5 | 30.0 | A |
 | `kSteerP/I/D` | 5 | 100/0/0.5 | — |
+| `kSteerS` | 5 | 0.12 | — |
 | `kAutoTranslationP/I/D` | 5 | 10/0/0 | — |
 | `kAutoRotationP/I/D` | 5 | 7.5/0/0 | — |
 | `kHeadingLockP/I/D` | 5 | 5/0/0.3 | — |
@@ -1079,7 +1087,7 @@ AdvantageScope is the primary tool for understanding robot behavior. Use these l
 | `kShooterEfficiencyFactor` | 11 | 0.30 | — |
 | `kBiasFactorNear` | 11 | 1.00 | — |
 | `kBiasFactorFar` | 11 | 1.00 | — |
-| `kFlywheelP/I/D/S/V/A` | 11 | 0.5/0/0/0/0.12/0 | — |
+| `kFlywheelP/I/D/S/V/A` | 11 | 0.5/0/0/0.10/0.12/0.01 | — |
 | `kFlywheelToleranceRPS` | 11 | 2.0 | rps |
 | `kIdleFlywheelRPS` | 11 | 15.0 | rps |
 | `kMaxFlywheelRPS` | 11 | 90.0 | rps |
