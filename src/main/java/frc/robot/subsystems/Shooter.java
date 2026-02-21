@@ -79,9 +79,11 @@ public class Shooter extends SubsystemBase {
     private final TalonFX turretMotor;
 
     // ==================== CONTROL REQUESTS (reused to avoid GC) ====================
-    private final VelocityVoltage flywheelRequest = new VelocityVoltage(0).withSlot(0);
-    private final PositionVoltage hoodRequest = new PositionVoltage(0).withSlot(0);
-    private final PositionVoltage turretRequest = new PositionVoltage(0).withSlot(0);
+    // withUpdateFreqHz(50): Phoenix 6 default auto-resend is 100 Hz. 50 Hz matches the main
+    // loop rate and halves CAN traffic on the RoboRIO bus from these three motors.
+    private final VelocityVoltage flywheelRequest = new VelocityVoltage(0).withSlot(0).withUpdateFreqHz(50);
+    private final PositionVoltage hoodRequest = new PositionVoltage(0).withSlot(0).withUpdateFreqHz(50);
+    private final PositionVoltage turretRequest = new PositionVoltage(0).withSlot(0).withUpdateFreqHz(50);
 
     // ==================== CACHED STATUS SIGNALS ====================
     private final StatusSignal<AngularVelocity> flywheelVelocitySignal;

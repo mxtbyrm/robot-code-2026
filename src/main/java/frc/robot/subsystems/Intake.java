@@ -72,9 +72,10 @@ public class Intake extends SubsystemBase {
     private final TalonFX rollerMotor;
 
     // ==================== CONTROL REQUESTS ====================
-    private final MotionMagicVoltage deployRequest = new MotionMagicVoltage(0).withSlot(0);
-    private final VoltageOut rightDeployRequest = new VoltageOut(0);
-    // Roller runs open-loop duty cycle — 50Hz control frame is plenty (default is 100Hz).
+    // withUpdateFreqHz(50): Phoenix 6 auto-resends control at 100 Hz by default. 50 Hz matches
+    // the main loop and halves CAN traffic on the RoboRIO bus. Same fix applied to all three motors.
+    private final MotionMagicVoltage deployRequest = new MotionMagicVoltage(0).withSlot(0).withUpdateFreqHz(50);
+    private final VoltageOut rightDeployRequest = new VoltageOut(0).withUpdateFreqHz(50);
     private final DutyCycleOut rollerRequest = new DutyCycleOut(0).withUpdateFreqHz(50);
 
     // ==================== GRAVITY FEEDFORWARD LOOKUP TABLES ====================

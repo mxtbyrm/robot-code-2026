@@ -47,8 +47,10 @@ public class SwerveModule {
     private final CANcoder cancoder;
 
     // ==================== CONTROL REQUESTS (reused — zero GC) ====================
-    private final VelocityVoltage driveRequest = new VelocityVoltage(0).withSlot(0);
-    private final PositionVoltage steerRequest = new PositionVoltage(0).withSlot(0);
+    // withUpdateFreqHz(100): CANivore has ample bandwidth; 100 Hz provides one resend between
+    // 50 Hz main-loop setpoint updates, giving the motor a fast recovery if a frame is dropped.
+    private final VelocityVoltage driveRequest = new VelocityVoltage(0).withSlot(0).withUpdateFreqHz(100);
+    private final PositionVoltage steerRequest = new PositionVoltage(0).withSlot(0).withUpdateFreqHz(100);
 
     // ==================== STATUS SIGNALS ====================
     private final StatusSignal<Angle> drivePositionSignal;
