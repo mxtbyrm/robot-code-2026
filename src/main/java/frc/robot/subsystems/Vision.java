@@ -10,6 +10,7 @@ import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import frc.robot.constants.AutoConstants;
@@ -304,11 +305,17 @@ public class Vision extends SubsystemBase {
             // Track accepted estimate
             perCamAccepted[camIndex]++;
 
-            // Send to drivetrain pose estimator
-            measurementConsumer.accept(
-                    est.estimatedPose.toPose2d(),
-                    est.timestampSeconds,
-                    curStdDevs[camIndex]);
+            // Send to drivetrain pose estimator.
+            // Skipped in simulation: physics odometry is already accurate and all camera
+            // transforms are uncalibrated (zeros in RobotConfig), so VisionSim measurements
+            // only introduce noise and cause pose jitter. Camera status, hub-tag tracking,
+            // and CameraPoses3d visualization still run normally in simulation.
+            if (!RobotBase.isSimulation()) {
+                measurementConsumer.accept(
+                        est.estimatedPose.toPose2d(),
+                        est.timestampSeconds,
+                        curStdDevs[camIndex]);
+            }
         }
     }
 
@@ -558,6 +565,17 @@ public class Vision extends SubsystemBase {
     // ==================== TELEMETRY ====================
 
     private void publishTelemetry() {
+        // ---- Camera positions in field frame (for AdvantageScope 3D visualization) ----
+        Pose3d robotPose3d = new Pose3d(currentPoseSupplier.get());
+        int numAprilTagCams = VisionConstants.kAprilTagCamTransforms.length;
+        Pose3d[] camPoses = new Pose3d[numAprilTagCams + 2]; // +2 for intake + side cameras
+        for (int i = 0; i < numAprilTagCams; i++) {
+            camPoses[i] = robotPose3d.transformBy(VisionConstants.kAprilTagCamTransforms[i]);
+        }
+        camPoses[numAprilTagCams]     = robotPose3d.transformBy(VisionConstants.kRobotToIntakeCam);
+        camPoses[numAprilTagCams + 1] = robotPose3d.transformBy(VisionConstants.kRobotToSideCam);
+        Logger.recordOutput("Vision/CameraPoses3d", camPoses);
+
         // Telemetry (AdvantageKit only)
         Logger.recordOutput("Vision/ConnectedATCameras", getConnectedAprilTagCameraCount());
         Logger.recordOutput("Vision/IntakeCamConnected", isIntakeCameraConnected());

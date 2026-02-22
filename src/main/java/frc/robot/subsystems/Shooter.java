@@ -492,6 +492,16 @@ public class Shooter extends SubsystemBase {
                         robotPose.getX(), robotPose.getY(), ShooterConstants.kHoodHeightMeters,
                         new edu.wpi.first.math.geometry.Rotation3d(0, -hoodPitchRad, turretFieldYaw)));
 
+        // Combined Pose3d array for AdvantageScope 3D mechanism visualization
+        Logger.recordOutput("Mechanism3d/Shooter", new edu.wpi.first.math.geometry.Pose3d[]{
+                new edu.wpi.first.math.geometry.Pose3d(
+                        robotPose.getX(), robotPose.getY(), ShooterConstants.kTurretHeightMeters,
+                        new edu.wpi.first.math.geometry.Rotation3d(0, 0, turretFieldYaw)),
+                new edu.wpi.first.math.geometry.Pose3d(
+                        robotPose.getX(), robotPose.getY(), ShooterConstants.kHoodHeightMeters,
+                        new edu.wpi.first.math.geometry.Rotation3d(0, -hoodPitchRad, turretFieldYaw))
+        });
+
         // Health reporting
         RobotState.getInstance().setShooterHealthy(healthy);
     }

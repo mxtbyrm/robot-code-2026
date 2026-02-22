@@ -309,9 +309,32 @@ public class SwerveDrive extends SubsystemBase {
 
         // AdvantageKit structured logging
         Logger.recordOutput("Swerve/Pose", pose);
+        Logger.recordOutput("RobotState/Pose3d", new edu.wpi.first.math.geometry.Pose3d(pose));
         Logger.recordOutput("Swerve/ModuleStates", currentStates);
         Logger.recordOutput("Swerve/GyroHeading", getHeading().getDegrees());
         Logger.recordOutput("Swerve/AllModulesHealthy", allModulesOk);
+
+        // ---- Module 3D poses for AdvantageScope 3D swerve visualization ----
+        // Each module's position in field frame + steering angle as yaw.
+        double cosH = Math.cos(pose.getRotation().getRadians());
+        double sinH = Math.sin(pose.getRotation().getRadians());
+        double halfBase  = SwerveConstants.kWheelBaseMeters  / 2.0;
+        double halfTrack = SwerveConstants.kTrackWidthMeters / 2.0;
+        // Robot-frame offsets: FL, FR, BL, BR (matches modules[] order)
+        double[] robotModX = { halfBase,  halfBase,  -halfBase, -halfBase };
+        double[] robotModY = { halfTrack, -halfTrack, halfTrack, -halfTrack };
+        edu.wpi.first.math.geometry.Pose3d[] modulePoses3d =
+                new edu.wpi.first.math.geometry.Pose3d[4];
+        for (int i = 0; i < 4; i++) {
+            double fieldX = pose.getX() + robotModX[i] * cosH - robotModY[i] * sinH;
+            double fieldY = pose.getY() + robotModX[i] * sinH + robotModY[i] * cosH;
+            double moduleYaw = pose.getRotation().getRadians()
+                    + currentStates[i].angle.getRadians();
+            modulePoses3d[i] = new edu.wpi.first.math.geometry.Pose3d(
+                    fieldX, fieldY, SwerveConstants.kWheelDiameterMeters / 2.0,
+                    new edu.wpi.first.math.geometry.Rotation3d(0, 0, moduleYaw));
+        }
+        Logger.recordOutput("Swerve/ModulePoses3d", modulePoses3d);
     }
 
     // ==================== SIMULATION ====================

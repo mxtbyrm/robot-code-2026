@@ -268,6 +268,13 @@ public class Intake extends SubsystemBase {
         Logger.recordOutput("Intake/RightGravityFF", rightGravityFF);
         Logger.recordOutput("Intake/PIDOutput", pidOutput);
 
+        // Human-readable arm angle: 0 = stowed (vertical), 1 = fully deployed (horizontal).
+        // Arm travels from kDeployStowedRotations (0.0) to kDeployExtendedRotations (negative).
+        // Fraction → degrees: 0 = 90° (stowed), 1 = 0° (horizontal deployed).
+        double deployFraction = getDeployPosition() / IntakeConstants.kDeployExtendedRotations;
+        Logger.recordOutput("Intake/ArmDeployFraction", deployFraction);
+        Logger.recordOutput("Intake/ArmAngleDeg", 90.0 * (1.0 - deployFraction));
+
         RobotState.getInstance().setIntakeHealthy(healthy);
     }
 

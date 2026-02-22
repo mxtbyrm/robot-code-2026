@@ -122,7 +122,7 @@ public final class SwerveConstants {
     public static final double kSlipMinActualSpeed     = 0.1;     // m/s
 
     // ==================== MODULE DRIVE THRESHOLDS ====================
-    public static final double kAntiJitterSpeedMPS = 0.05;       // hold last angle below this
+    public static final double kAntiJitterSpeedMPS = 0.1;        // hold last angle below this
 
     // ==================== HEADING LOCK TOLERANCE ====================
     public static final double kHeadingLockToleranceDeg = 1.5;

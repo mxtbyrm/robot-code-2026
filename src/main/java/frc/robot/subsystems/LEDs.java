@@ -11,6 +11,8 @@ import frc.robot.constants.LEDConstants;
 import frc.robot.RobotState;
 import frc.robot.subsystems.Superstructure.SuperState;
 
+import org.littletonrobotics.junction.Logger;
+
 /**
  * LED subsystem for Einstein-grade driver communication.
  *
@@ -60,6 +62,10 @@ public class LEDs extends SubsystemBase {
     // ==================== ANIMATION ====================
     private int chaseOffset = 0;
 
+    // ==================== TELEMETRY ====================
+    /** Current LED pattern name — logged each cycle for AdvantageScope replay. */
+    private String currentPattern = "IDLE";
+
     private static final int kLedPort = LEDConstants.kLedPort;
     private static final int kLedCount = LEDConstants.kLedCount;
 
@@ -84,42 +90,42 @@ public class LEDs extends SubsystemBase {
         // ---- Priority 1: Fault / Jam ----
         if (!rs.isAllHealthy()) {
             flash(Color.kRed, now, 5.0); // fast red flash
-            led.setData(buffer);
+            applyAndLog("FAULT");
             return;
         }
 
         // ---- Priority 2: Low battery ----
         if (rs.isLowBattery()) {
             pulse(Color.kOrangeRed, now, 2.0);
-            led.setData(buffer);
+            applyAndLog("LOW_BATTERY");
             return;
         }
 
         // ---- Priority 1.5: Vision cameras disconnected ----
         if (vision.getConnectedAprilTagCameraCount() < 2) {
             alternating(Color.kCyan, Color.kRed, now, 3.0); // cyan/red alternating
-            led.setData(buffer);
+            applyAndLog("VISION_DISCONNECTED");
             return;
         }
 
         // ---- Priority 2.3: Turret at hard limit (MUST rotate NOW) ----
         if (shooter.isTurretAtHardLimit()) {
             strobe(Color.kOrange, now, 12.0); // rapid amber strobe
-            led.setData(buffer);
+            applyAndLog("TURRET_HARD_LIMIT");
             return;
         }
 
         // ---- Priority 2.5: Brownout predicted (imminent) ----
         if (rs.isBrownoutPredicted()) {
             strobe(Color.kOrange, now, 8.0); // fast orange strobe = brownout imminent
-            led.setData(buffer);
+            applyAndLog("BROWNOUT_PREDICTED");
             return;
         }
 
         // ---- Priority 2.7: Turret near limit (driver should rotate) ----
         if (shooter.isTurretNearLimit()) {
             pulse(Color.kOrange, now, 4.0); // amber pulse
-            led.setData(buffer);
+            applyAndLog("TURRET_NEAR_LIMIT");
             return;
         }
 
@@ -128,6 +134,7 @@ public class LEDs extends SubsystemBase {
             // Alliance color breathe
             Color allianceColor = getAllianceColor();
             breathe(allianceColor, now, 1.5);
+            currentPattern = "DISABLED_BREATHE";
         } else {
             SuperState state = superstructure.getCurrentState();
 
@@ -137,46 +144,71 @@ public class LEDs extends SubsystemBase {
                     if (shooter.isReadyToShoot()) {
                         if (superstructure.getCurrentState() == SuperState.SHOOTING_ALLIANCE) {
                             strobe(Color.kPurple, now, 10.0); // purple strobe = alliance zone dump
+                            currentPattern = "SHOOTING_ALLIANCE";
                         } else {
                             strobe(Color.kGreen, now, 10.0); // green strobe = locked on + feeding
+                            currentPattern = "SHOOTING_LOCKED";
                         }
                     } else {
                         pulse(Color.kYellow, now, 3.0); // yellow pulse = waiting for lock
+                        currentPattern = "SHOOTING_ACQUIRING";
                     }
                     break;
 
                 case INTAKING:
                     if (vision.isBallDetected()) {
                         flash(Color.kCyan, now, 6.0); // cyan flash = vision sees ball
+                        currentPattern = "INTAKING_BALL_VISIBLE";
                     } else {
                         chase(Color.kBlue, Color.kBlack, now);
+                        currentPattern = "INTAKING";
                     }
                     break;
 
                 case OUTTAKING:
                     chase(Color.kOrange, Color.kBlack, now);
+                    currentPattern = "OUTTAKING";
                     break;
 
                 case UNJAMMING:
                     flash(Color.kRed, now, 3.0);
+                    currentPattern = "UNJAMMING";
                     break;
 
                 case IDLE:
                 default:
                     if (shooter.isTrackingEnabled() && shooter.isReadyToShoot() && shooter.isInShootingRange()) {
                         solid(Color.kGreen); // tracking + locked = ready to shoot
+                        currentPattern = "IDLE_READY";
                     } else if (shooter.isTrackingEnabled() && !shooter.isReadyToShoot()) {
                         pulse(Color.kMagenta, now, 3.0); // tracking on but not locked yet
+                        currentPattern = "IDLE_ACQUIRING";
                     } else if (shooter.isInShootingRange()) {
                         pulse(Color.kGreen, now, 2.0); // in range, not tracking
+                        currentPattern = "IDLE_IN_RANGE";
                     } else {
                         solid(getAllianceColor()); // alliance color solid
+                        currentPattern = "IDLE";
                     }
                     break;
             }
         }
 
+        applyAndLog(currentPattern);
+    }
+
+    /**
+     * Applies the LED buffer to the hardware strip and logs the current pattern name
+     * + first LED RGB color to AdvantageKit for replay visibility.
+     */
+    private void applyAndLog(String patternName) {
+        this.currentPattern = patternName;
         led.setData(buffer);
+        Color firstLED = buffer.getLED(0);
+        Logger.recordOutput("LEDs/Pattern", patternName);
+        Logger.recordOutput("LEDs/ColorR", (int) (firstLED.red   * 255));
+        Logger.recordOutput("LEDs/ColorG", (int) (firstLED.green * 255));
+        Logger.recordOutput("LEDs/ColorB", (int) (firstLED.blue  * 255));
     }
 
     // ==================== PATTERNS ====================

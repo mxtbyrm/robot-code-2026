@@ -6,7 +6,12 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+
+import frc.robot.constants.AutoConstants;
 import frc.robot.sim.RobotSimulator;
+import frc.robot.subsystems.SwerveDrive;
 import frc.robot.subsystems.Superstructure;
 
 import org.littletonrobotics.junction.LoggedRobot;
@@ -149,6 +154,13 @@ public class Robot extends LoggedRobot {
   @Override
   public void simulationInit() {
     // All subsystem singletons are already initialised by RobotContainer at this point.
+
+    // Place robot at a valid blue-alliance starting position so VisionSim detects
+    // AprilTags from a realistic position and doesn't fuse wildly wrong pose estimates.
+    // 1.5m from the blue wall, centered in Y on the field.
+    SwerveDrive.getInstance().resetPose(
+        new Pose2d(1.5, AutoConstants.kFieldWidthMeters / 2.0, new Rotation2d()));
+
     m_robotSimulator = new RobotSimulator();
   }
 

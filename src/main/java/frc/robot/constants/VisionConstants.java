@@ -14,8 +14,9 @@ import frc.robot.RobotConfig;
 
 public final class VisionConstants {
     // ==================== FIELD LAYOUT ====================
+    // Use the official 2026 REBUILT Andymark field layout for correct AprilTag positions.
     public static final AprilTagFieldLayout kTagLayout =
-            AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
+            AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltAndymark);
 
     // ==================== HUB APRILTAG VISION TARGETING ====================
     // The HUB AprilTags are at 44.25in (1.124m) height — used for

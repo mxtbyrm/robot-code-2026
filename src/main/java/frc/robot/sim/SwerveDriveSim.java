@@ -123,5 +123,7 @@ public class SwerveDriveSim {
         Pigeon2SimState pigeonSim = pigeon.getSimState();
         pigeonSim.setSupplyVoltage(batteryVoltage);
         pigeonSim.setRawYaw(Math.toDegrees(simHeadingRad));
+        // Phoenix 6 derives getAngularVelocityZWorld() internally from the rate of
+        // change between successive setRawYaw() calls — no manual velocity set needed.
     }
 }

@@ -1,5 +1,15 @@
 package frc.robot.sim;
 
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Transform3d;
+import edu.wpi.first.math.geometry.Translation3d;
+
+import frc.robot.constants.HubConstants;
+import frc.robot.constants.ShooterConstants;
+import frc.robot.subsystems.SwerveDrive;
+
 import org.littletonrobotics.junction.Logger;
 
 /**
@@ -223,6 +233,78 @@ public class RobotSimulator {
         Logger.recordOutput("Sim/Balls/IntakeTimer", intakeAccumulatedTime);
         Logger.recordOutput("Sim/Balls/FeedTimer",   feedAccumulatedTime);
         Logger.recordOutput("Sim/Balls/ShotTimer",   shotAccumulatedTime);
+        log3DVisualization();
+    }
+
+    /**
+     * Logs 3D poses for AdvantageScope 3D simulation:
+     * <ul>
+     *   <li><b>Mechanism3d/Intake</b>   — intake arm tip pose in field frame
+     *   <li><b>Sim/BallPoses3d</b>      — all on-robot ball positions as Pose3d[]
+     *   <li><b>Field/HubPoses3d</b>     — both HUB scoring openings as Pose3d[]
+     * </ul>
+     *
+     * <p>In AdvantageScope 3D, set each Pose3d[] key as a game-piece or
+     * mechanism layer to visualise balls and robot components on the field.
+     */
+    private void log3DVisualization() {
+        Pose2d robotPose = SwerveDrive.getInstance().getPose();
+        Pose3d robotPose3d = new Pose3d(robotPose);
+
+        // ---- Intake arm ----
+        // Arm pivot is ~35 cm forward of robot center, ~25 cm above ground.
+        // armAngleRad: π/2 = stowed (vertical), 0 = deployed (horizontal forward).
+        // Arm extends 40 cm from pivot to roller tip.
+        double armAngle = intakeSim.getArmAngleRad();
+        double kArmLengthM = 0.40;
+        double kPivotXM    = 0.35; // metres forward of robot centre
+        double kPivotZM    = 0.25; // metres above the floor
+        Translation3d armTipRobot = new Translation3d(
+                kPivotXM + kArmLengthM * Math.cos(armAngle),
+                0,
+                kPivotZM + kArmLengthM * Math.sin(armAngle));
+        // Pitch: arm points along its own axis (0 = horizontal, π/2 = vertical)
+        Pose3d intakeArmPose = robotPose3d.transformBy(new Transform3d(
+                armTipRobot,
+                new Rotation3d(0, -(Math.PI / 2.0 - armAngle), 0)));
+        Logger.recordOutput("Mechanism3d/Intake", intakeArmPose);
+
+        // ---- Ball positions ----
+        // Stack hopper balls vertically inside the robot hopper area.
+        // Feeder ball sits slightly forward and higher (near beam-break).
+        double kBallDiam  = ShooterConstants.kBallDiameterMeters; // ~0.150 m
+        double kHopperX   = 0.0;   // centred on robot
+        double kHopperZBase = 0.15; // first ball centre height
+        int totalBalls = ballsInHopper + (ballInFeeder ? 1 : 0);
+        Pose3d[] ballPoses = new Pose3d[totalBalls];
+        int idx = 0;
+        for (int i = 0; i < ballsInHopper; i++) {
+            Translation3d ballRobot = new Translation3d(
+                    kHopperX, 0, kHopperZBase + i * kBallDiam);
+            ballPoses[idx++] = robotPose3d.transformBy(
+                    new Transform3d(ballRobot, new Rotation3d()));
+        }
+        if (ballInFeeder) {
+            Translation3d feederBallRobot = new Translation3d(0.15, 0, 0.35);
+            ballPoses[idx] = robotPose3d.transformBy(
+                    new Transform3d(feederBallRobot, new Rotation3d()));
+        }
+        Logger.recordOutput("Sim/BallPoses3d", ballPoses);
+
+        // ---- HUB scoring openings ----
+        // Logged once per cycle so AdvantageScope can render them as field objects.
+        Logger.recordOutput("Field/HubPoses3d", new Pose3d[]{
+                new Pose3d(
+                        HubConstants.kBlueHubCenter.getX(),
+                        HubConstants.kBlueHubCenter.getY(),
+                        HubConstants.kScoringOpeningHeightMeters,
+                        new Rotation3d()),
+                new Pose3d(
+                        HubConstants.kRedHubCenter.getX(),
+                        HubConstants.kRedHubCenter.getY(),
+                        HubConstants.kScoringOpeningHeightMeters,
+                        new Rotation3d())
+        });
     }
 
     // ==================== ACCESSORS ====================

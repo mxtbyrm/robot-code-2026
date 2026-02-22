@@ -114,7 +114,7 @@ public final class RobotConfig {
     // Steer motor PID + static FF (position control, mechanism = azimuth rotations 0–1)
     // kS compensates for stiction in the 150/7 azimuth gearbox so the module snaps
     // to angle quickly even from small errors. Run SysId steer routine to refine.
-    public static final double kSteerP = 100.0;
+    public static final double kSteerP = 50.0;
     public static final double kSteerI = 0.0;
     public static final double kSteerD = 0.5;
     public static final double kSteerS = 0.12;  // Static friction (V) — steer gearbox stiction

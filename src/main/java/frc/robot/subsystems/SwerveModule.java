@@ -196,9 +196,16 @@ public class SwerveModule {
         // target angle, driving at full speed scrubs sideways (the wheel isn't
         // pointed where kinematics expects). Scale drive speed by cos(error)
         // so the effective forward component matches what was requested.
-        double angleErrorRad = desiredState.angle.minus(getAngle()).getRadians();
-        double cosineScalar = Math.cos(angleErrorRad);
-        double adjustedSpeed = desiredState.speedMetersPerSecond * cosineScalar;
+        // Gated below the anti-jitter threshold: at near-zero speed the noisy
+        // getAngle() read would produce a meaningless angle error, and we don't
+        // want any non-zero drive command to slip through via cosine scaling.
+        double adjustedSpeed;
+        if (Math.abs(desiredState.speedMetersPerSecond) < SwerveConstants.kAntiJitterSpeedMPS) {
+            adjustedSpeed = 0.0;
+        } else {
+            double angleErrorRad = desiredState.angle.minus(getAngle()).getRadians();
+            adjustedSpeed = desiredState.speedMetersPerSecond * Math.cos(angleErrorRad);
+        }
 
         double driveRPS = adjustedSpeed / SwerveConstants.kWheelCircumferenceMeters;
         driveMotor.setControl(driveRequest.withVelocity(driveRPS));

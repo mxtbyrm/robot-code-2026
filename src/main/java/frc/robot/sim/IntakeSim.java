@@ -181,6 +181,9 @@ public class IntakeSim {
 
     // ==================== ACCESSORS FOR BALL SIMULATION ====================
 
+    /** @return current arm angle in radians (0 = horizontal/deployed, π/2 = vertical/stowed). */
+    public double getArmAngleRad() { return armAngleRad; }
+
     /**
      * @return true when the intake arm is sufficiently deployed to collect balls.
      *         Threshold: arm within 15° of the deployed (floor) position.
