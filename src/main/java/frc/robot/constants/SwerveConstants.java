@@ -4,12 +4,19 @@ import com.ctre.phoenix6.CANBus;
 
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
+import edu.wpi.first.wpilibj.RobotBase;
 
 import frc.robot.RobotConfig;
 
 public final class SwerveConstants {
     // ==================== CAN BUS ====================
-    public static final CANBus kCANivoreBus = new CANBus("CANivore");
+    // On real hardware: named CANivore bus (USB CAN-FD, 5 Mbps).
+    // In simulation: fall back to the default "rio" bus — Phoenix 6 simulation does
+    // not create a virtual CANivore network, so specifying "CANivore" causes
+    // BaseStatusSignal.refreshAll() to throw "network not present".
+    public static final CANBus kCANivoreBus = RobotBase.isReal()
+            ? new CANBus("CANivore")
+            : new CANBus("");
 
     // ==================== GYRO ====================
     // Pigeon2 CAN ID — set in RobotConfig

@@ -37,6 +37,16 @@ public final class RobotConfig {
 
     private RobotConfig() {} // utility class
 
+    // ==================== 0. FEATURE FLAGS ====================
+    // Set to false to disable a subsystem that is not yet connected/configured.
+    // Flip back to true once the hardware is ready.
+
+    /** Set to false to skip Vision initialization when cameras are not connected. */
+    public static final boolean kVisionEnabled = false;
+
+    /** Set to false to skip LED initialization when the LED strip is not connected. */
+    public static final boolean kLEDsEnabled = false;
+
     // ==================== 1. OPERATOR ====================
 
     /** USB port index for the driver's Xbox controller. */

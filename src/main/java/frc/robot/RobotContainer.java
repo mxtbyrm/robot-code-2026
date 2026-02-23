@@ -18,6 +18,8 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.commands.SysIdCommands;
 
 import frc.robot.constants.OperatorConstants;
+
+import java.util.function.Supplier;
 import frc.robot.commands.Autos;
 import frc.robot.commands.OnTheFlyAutos;
 import frc.robot.commands.SwerveDriveCommand;
@@ -69,9 +71,13 @@ public class RobotContainer {
         Spindexer.initialize();
         Shooter.initialize(SwerveDrive.getInstance()::getPose, SwerveDrive.getInstance()::getFieldRelativeSpeeds);
         Feeder.initialize(Shooter.getInstance()::isReadyToShoot, Shooter.getInstance()::getTargetFlywheelRPS);
-        Vision.initialize(SwerveDrive.getInstance()::addVisionMeasurement, SwerveDrive.getInstance()::getPose);
+        if (RobotConfig.kVisionEnabled) {
+            Vision.initialize(SwerveDrive.getInstance()::addVisionMeasurement, SwerveDrive.getInstance()::getPose);
+        }
         Superstructure.initialize();
-        LEDs.initialize();
+        if (RobotConfig.kLEDsEnabled) {
+            LEDs.initialize();
+        }
 
         // ==================== CHOREO AUTO FACTORY ====================
         // Alliance-aware: ChoreoLib automatically mirrors trajectories for Red alliance
@@ -84,15 +90,21 @@ public class RobotContainer {
         );
 
         // ==================== AUTOS ====================
+        // When vision is disabled, visionCollectFactory returns Commands.none() — which finishes
+        // instantly, so auto routines skip the vision-collect steps cleanly.
+        Supplier<Command> visionCollectSupplier = RobotConfig.kVisionEnabled
+                ? () -> VisionIntakeCommand.forAuto(SwerveDrive.getInstance(), Vision.getInstance())
+                : Commands::none;
+
         autos = new Autos(SwerveDrive.getInstance(), Shooter.getInstance(), Feeder.getInstance(),
                 Intake.getInstance(), Spindexer.getInstance(), Superstructure.getInstance(),
-                Vision.getInstance(), autoFactory,
-                () -> VisionIntakeCommand.forAuto(SwerveDrive.getInstance(), Vision.getInstance()));
+                RobotConfig.kVisionEnabled ? Vision.getInstance() : null, autoFactory,
+                visionCollectSupplier);
 
         // ==================== ON-THE-FLY AUTOS (PathPlanner pathfinding) ====================
         onTheFlyAutos = new OnTheFlyAutos(SwerveDrive.getInstance(), Shooter.getInstance(),
                 Superstructure.getInstance(),
-                () -> VisionIntakeCommand.forAuto(SwerveDrive.getInstance(), Vision.getInstance()));
+                visionCollectSupplier);
 
         // ==================== AUTO CHOOSER ====================
         // Combined chooser: PathPlanner routines first, Choreo fallbacks below
@@ -212,14 +224,20 @@ public class RobotContainer {
                     Shooter.getInstance().disableTracking();
                 }, Shooter.getInstance()),
 
-                // ---- Vision: check camera connectivity ----
-                Commands.runOnce(() -> {
-                    int camCount = Vision.getInstance().getConnectedAprilTagCameraCount();
-                    results[5] = camCount >= 1;
-                    SmartDashboard.putNumber("SystemCheck/Vision Cameras", camCount);
-                    SmartDashboard.putBoolean("SystemCheck/Vision", results[5]);
-                    if (!results[5]) CommandScheduler.getInstance().schedule(Commands.print("[SYSTEM CHECK] FAIL: No AprilTag cameras connected"));
-                }),
+                // ---- Vision: check camera connectivity (skipped when kVisionEnabled = false) ----
+                RobotConfig.kVisionEnabled
+                        ? Commands.runOnce(() -> {
+                            int camCount = Vision.getInstance().getConnectedAprilTagCameraCount();
+                            results[5] = camCount >= 1;
+                            SmartDashboard.putNumber("SystemCheck/Vision Cameras", camCount);
+                            SmartDashboard.putBoolean("SystemCheck/Vision", results[5]);
+                            if (!results[5]) CommandScheduler.getInstance().schedule(Commands.print("[SYSTEM CHECK] FAIL: No AprilTag cameras connected"));
+                        })
+                        : Commands.runOnce(() -> {
+                            results[5] = true; // vision disabled — don't count against overall pass
+                            SmartDashboard.putBoolean("SystemCheck/Vision", false);
+                            SmartDashboard.putString("SystemCheck/Vision Status", "DISABLED");
+                        }),
 
                 // ---- Summary ----
                 Commands.runOnce(() -> {
@@ -268,12 +286,15 @@ public class RobotContainer {
 
         // Y button: Vision-assisted ball chase (while holding, auto-drives to nearest ball + runs rollers)
         // Operator should deploy intake arm first via A toggle. This only controls chassis + rollers.
-        driverController.y().whileTrue(
-                Commands.parallel(
-                        new VisionIntakeCommand(SwerveDrive.getInstance(), Vision.getInstance()),
-                        Superstructure.getInstance().intakeRollerCommand()
-                )
-        );
+        // Binding is skipped when vision is disabled (kVisionEnabled = false).
+        if (RobotConfig.kVisionEnabled) {
+            driverController.y().whileTrue(
+                    Commands.parallel(
+                            new VisionIntakeCommand(SwerveDrive.getInstance(), Vision.getInstance()),
+                            Superstructure.getInstance().intakeRollerCommand()
+                    )
+            );
+        }
     }
 
     // ==================== OPERATOR BINDINGS ====================

@@ -25,6 +25,7 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import frc.robot.constants.ShooterConstants;
+import frc.robot.constants.SwerveConstants;
 import frc.robot.RobotState;
 import frc.robot.ShooterPhysics;
 
@@ -162,9 +163,9 @@ public class Shooter extends SubsystemBase {
         this.poseSupplier = poseSupplier;
         this.fieldSpeedsSupplier = fieldSpeedsSupplier;
 
-        flywheelMotor = new TalonFX(ShooterConstants.kFlywheelMotorId);
-        hoodMotor = new TalonFX(ShooterConstants.kHoodMotorId);
-        turretMotor = new TalonFX(ShooterConstants.kTurretMotorId);
+        flywheelMotor = new TalonFX(ShooterConstants.kFlywheelMotorId, SwerveConstants.kCANivoreBus);
+        hoodMotor     = new TalonFX(ShooterConstants.kHoodMotorId,     SwerveConstants.kCANivoreBus);
+        turretMotor   = new TalonFX(ShooterConstants.kTurretMotorId); // rio CAN bus
 
         configureFlywheelMotor();
         configureHoodMotor();
@@ -347,8 +348,10 @@ public class Shooter extends SubsystemBase {
     @Override
     public void periodic() {
         // ---- 0. Batch refresh all status signals ONCE per cycle ----
-        com.ctre.phoenix6.BaseStatusSignal.refreshAll(
-                flywheelVelocitySignal, hoodPositionSignal, turretPositionSignal);
+        // Flywheel and hood are on the CANivore bus; turret is on the rio bus.
+        // refreshAll() requires all signals to share the same bus — split into two calls.
+        com.ctre.phoenix6.BaseStatusSignal.refreshAll(flywheelVelocitySignal, hoodPositionSignal);
+        com.ctre.phoenix6.BaseStatusSignal.refreshAll(turretPositionSignal);
         cachedFlywheelVelocityRPS = flywheelVelocitySignal.getValueAsDouble();
         cachedHoodPositionDeg = hoodPositionSignal.getValueAsDouble() * 360.0;
         cachedTurretPositionDeg = turretPositionSignal.getValueAsDouble() * 360.0;
