@@ -127,16 +127,16 @@ public class SwerveDrive extends SubsystemBase {
         pigeon.optimizeBusUtilization();
 
         // Initialize swerve modules
-        // MK4i with all bevel gears facing left:
-        // Left side (FL, BL) drive motors are inverted
-        // Right side (FR, BR) drive motors are NOT inverted
+        // MK4i modules are physically identical (not mirrored left/right).
+        // All 4 motors face the same direction in the chassis, so all 4 drive
+        // motors need the same inversion. Confirmed on robot: all true (Clockwise_Positive).
         frontLeft = new SwerveModule(
                 "FL",
                 SwerveConstants.kFrontLeftDriveMotorId,
                 SwerveConstants.kFrontLeftSteerMotorId,
                 SwerveConstants.kFrontLeftEncoderId,
                 SwerveConstants.kFrontLeftEncoderOffset,
-                true // drive inverted (bevel gear side)
+                SwerveConstants.kDriveMotorInverted
         );
 
         frontRight = new SwerveModule(
@@ -145,7 +145,7 @@ public class SwerveDrive extends SubsystemBase {
                 SwerveConstants.kFrontRightSteerMotorId,
                 SwerveConstants.kFrontRightEncoderId,
                 SwerveConstants.kFrontRightEncoderOffset,
-                false // drive not inverted
+                SwerveConstants.kDriveMotorInverted
         );
 
         backLeft = new SwerveModule(
@@ -154,7 +154,7 @@ public class SwerveDrive extends SubsystemBase {
                 SwerveConstants.kBackLeftSteerMotorId,
                 SwerveConstants.kBackLeftEncoderId,
                 SwerveConstants.kBackLeftEncoderOffset,
-                true // drive inverted (bevel gear side)
+                SwerveConstants.kDriveMotorInverted
         );
 
         backRight = new SwerveModule(
@@ -163,7 +163,7 @@ public class SwerveDrive extends SubsystemBase {
                 SwerveConstants.kBackRightSteerMotorId,
                 SwerveConstants.kBackRightEncoderId,
                 SwerveConstants.kBackRightEncoderOffset,
-                false // drive not inverted
+                SwerveConstants.kDriveMotorInverted
         );
 
         modules = new SwerveModule[] { frontLeft, frontRight, backLeft, backRight };
@@ -603,11 +603,20 @@ public class SwerveDrive extends SubsystemBase {
 
     // ==================== SYSID CHARACTERIZATION ====================
 
+    // Store the last commanded voltage so the SysId log callback can read it back.
+    // getMotorVoltage() from Phoenix 6 returns the raw electrical terminal voltage,
+    // which is NEGATIVE for Clockwise_Positive motors moving in their positive direction
+    // (Phoenix internally inverts the polarity to achieve CW rotation). Using the
+    // commanded voltage avoids this sign ambiguity entirely.
+    private double sysIdDriveVolts = 0.0;
+    private double sysIdSteerVolts = 0.0;
+
     /**
      * Applies a raw voltage to all drive motors with modules pointed forward.
      * Used by SysId to characterize drive motor feedforward (kS, kV, kA).
      */
     public void runDriveCharacterization(double volts) {
+        sysIdDriveVolts = volts;
         for (SwerveModule module : modules) {
             module.setDesiredState(new SwerveModuleState(0, new Rotation2d()));
         }
@@ -622,11 +631,18 @@ public class SwerveDrive extends SubsystemBase {
      * Drive motors are stopped during steer characterization.
      */
     public void runSteerCharacterization(double volts) {
+        sysIdSteerVolts = volts;
         for (SwerveModule module : modules) {
             module.setDriveVoltage(0);
             module.setSteerVoltage(volts);
         }
     }
+
+    /** Returns the last voltage commanded to the drive motors (for SysId logging). */
+    public double getSysIdDriveVolts() { return sysIdDriveVolts; }
+
+    /** Returns the last voltage commanded to the steer motors (for SysId logging). */
+    public double getSysIdSteerVolts() { return sysIdSteerVolts; }
 
     /** Returns the modules array for SysId logging. */
     public SwerveModule[] getModules() {

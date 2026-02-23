@@ -68,6 +68,14 @@ public final class RobotConfig {
 
     // ==================== 3. SWERVE CAN WIRING ====================
 
+    /**
+     * Drive motor inversion for all 4 MK4i modules.
+     * MK4i modules are physically identical (not left/right mirrored), so all 4
+     * motors face the same direction in the chassis and all need the same inversion.
+     * true = Clockwise_Positive. Confirmed on robot with all bevels facing left.
+     */
+    public static final boolean kDriveMotorInverted = true;
+
     /** CAN ID for the Pigeon2 IMU on the CANivore bus. */
     public static final int kPigeonId = 13;
 

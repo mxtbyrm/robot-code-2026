@@ -45,7 +45,7 @@ public class SysIdCommands {
                             SwerveModule[] modules = drive.getModules();
                             for (int i = 0; i < modules.length; i++) {
                                 log.motor("drive-" + modules[i].getName())
-                                        .voltage(Volts.of(0))
+                                        .voltage(Volts.of(drive.getSysIdDriveVolts()))
                                         .linearPosition(Meters.of(
                                                 modules[i].getDrivePositionRotations()
                                                         * SwerveConstants.kWheelCircumferenceMeters))
@@ -71,10 +71,14 @@ public class SysIdCommands {
                 new SysIdRoutine.Mechanism(
                         voltage -> drive.runSteerCharacterization(voltage.in(Volts)),
                         log -> {
+                            // Signs are already consistent: positive commanded voltage →
+                            // CW motor (CW_Positive) → CCW azimuth (gearbox reverses,
+                            // confirmed by positive RotorToSensorRatio) → positive
+                            // FusedCANcoder reading (CCW_Positive). No negation needed.
                             SwerveModule[] modules = drive.getModules();
                             for (int i = 0; i < modules.length; i++) {
                                 log.motor("steer-" + modules[i].getName())
-                                        .voltage(Volts.of(0))
+                                        .voltage(Volts.of(drive.getSysIdSteerVolts()))
                                         .angularPosition(Rotations.of(
                                                 modules[i].getSteerPositionRotations()))
                                         .angularVelocity(RotationsPerSecond.of(
@@ -98,7 +102,7 @@ public class SysIdCommands {
                 new SysIdRoutine.Mechanism(
                         voltage -> shooter.setFlywheelVoltage(voltage.in(Volts)),
                         log -> log.motor("flywheel")
-                                .voltage(Volts.of(0))
+                                .voltage(Volts.of(shooter.getFlywheelMotorVoltage()))
                                 .angularPosition(Rotations.of(0)) // not tracking position
                                 .angularVelocity(RotationsPerSecond.of(
                                         shooter.getFlywheelVelocityRPS())),
@@ -119,10 +123,11 @@ public class SysIdCommands {
                 new SysIdRoutine.Mechanism(
                         voltage -> shooter.setHoodVoltage(voltage.in(Volts)),
                         log -> log.motor("hood")
-                                .voltage(Volts.of(0))
+                                .voltage(Volts.of(shooter.getHoodMotorVoltage()))
                                 .angularPosition(Rotations.of(
                                         shooter.getHoodPositionRotations()))
-                                .angularVelocity(RotationsPerSecond.of(0)),
+                                .angularVelocity(RotationsPerSecond.of(
+                                        shooter.getHoodVelocityRPS())),
                         shooter
                 )
         );
@@ -140,10 +145,11 @@ public class SysIdCommands {
                 new SysIdRoutine.Mechanism(
                         voltage -> shooter.setTurretVoltage(voltage.in(Volts)),
                         log -> log.motor("turret")
-                                .voltage(Volts.of(0))
+                                .voltage(Volts.of(shooter.getTurretMotorVoltage()))
                                 .angularPosition(Rotations.of(
                                         shooter.getTurretPositionRotations()))
-                                .angularVelocity(RotationsPerSecond.of(0)),
+                                .angularVelocity(RotationsPerSecond.of(
+                                        shooter.getTurretVelocityRPS())),
                         shooter
                 )
         );
@@ -161,7 +167,7 @@ public class SysIdCommands {
                 new SysIdRoutine.Mechanism(
                         voltage -> intake.setDeployVoltage(voltage.in(Volts)),
                         log -> log.motor("intake-deploy")
-                                .voltage(Volts.of(0))
+                                .voltage(Volts.of(intake.getDeployMotorVoltage()))
                                 .angularPosition(Rotations.of(
                                         intake.getDeployPositionRotations()))
                                 .angularVelocity(RotationsPerSecond.of(

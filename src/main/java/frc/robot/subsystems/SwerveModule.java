@@ -136,7 +136,7 @@ public class SwerveModule {
         steerConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
 
         steerConfig.Feedback.FeedbackRemoteSensorID = cancoderId;
-        steerConfig.Feedback.FeedbackSensorSource = FeedbackSensorSourceValue.FusedCANcoder;
+        steerConfig.Feedback.FeedbackSensorSource = FeedbackSensorSourceValue.RemoteCANcoder;
         steerConfig.Feedback.RotorToSensorRatio = SwerveConstants.kSteerGearRatio;
         steerConfig.Feedback.SensorToMechanismRatio = 1.0;
 
@@ -157,7 +157,7 @@ public class SwerveModule {
                 drivePositionSignal, steerPositionSignal);
         BaseStatusSignal.setUpdateFrequencyForAll(SwerveConstants.kModuleVelocityUpdateFreqHz,
                 driveVelocitySignal, steerVelocitySignal);
-        // cancoderPositionSignal is NOT subscribed here — FusedCANcoder feedback
+        // cancoderPositionSignal is NOT subscribed here — RemoteCANcoder feedback
         // is handled internally by the TalonFX. No need to read it from user code.
 
         driveMotor.optimizeBusUtilization();
@@ -314,6 +314,7 @@ public class SwerveModule {
     public void setSteerVoltage(double volts) {
         steerMotor.setVoltage(volts);
     }
+
 
     /** Gets the steer motor velocity in azimuth RPS (mechanism, 1 = full wheel rotation). */
     public double getSteerVelocityRPS() {

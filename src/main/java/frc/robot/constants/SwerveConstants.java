@@ -18,6 +18,10 @@ public final class SwerveConstants {
             ? new CANBus("CANivore")
             : new CANBus("");
 
+    // ==================== DRIVE MOTOR INVERSION ====================
+    /** All 4 MK4i drive motors use the same inversion — modules are not left/right mirrored. */
+    public static final boolean kDriveMotorInverted = RobotConfig.kDriveMotorInverted;
+
     // ==================== GYRO ====================
     // Pigeon2 CAN ID — set in RobotConfig
     public static final int kPigeonId = RobotConfig.kPigeonId;

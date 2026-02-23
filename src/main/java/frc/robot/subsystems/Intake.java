@@ -13,6 +13,7 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 import edu.wpi.first.units.measure.Angle;
+import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -91,10 +92,14 @@ public class Intake extends SubsystemBase {
     private final StatusSignal<Current> leftDeployCurrentSignal;
     private final StatusSignal<Current> rightDeployCurrentSignal;
     private final StatusSignal<Angle> deployPositionSignal;
+    private final StatusSignal<AngularVelocity> deployVelocitySignal;
     private final StatusSignal<Voltage> leftDeployOutputSignal;
     private int deployStallCycleCount = 0;
     private boolean healthy = true;
     private static final int kMaxConfigRetries = 5;
+
+    // SysId commanded voltage — logged instead of terminal voltage to avoid sign ambiguity
+    private double sysIdDeployVolts = 0.0;
 
     public enum DeployState {
         STOWED,
@@ -128,6 +133,10 @@ public class Intake extends SubsystemBase {
         // 30Hz — deploy arm is slow but needs reasonable feedback for Motion Magic.
         deployPositionSignal = leftDeployMotor.getPosition();
         deployPositionSignal.setUpdateFrequency(30);
+
+        // Cache deploy velocity for SysId logging (30Hz matches position — arm moves slowly).
+        deployVelocitySignal = leftDeployMotor.getVelocity();
+        deployVelocitySignal.setUpdateFrequency(30);
 
         // Cache left motor's closed-loop output so we can mirror it to the right motor
         // 50Hz matches the robot loop rate
@@ -220,7 +229,7 @@ public class Intake extends SubsystemBase {
         // ---- Refresh cached status signals ONCE per cycle ----
         com.ctre.phoenix6.BaseStatusSignal.refreshAll(
                 leftDeployCurrentSignal, rightDeployCurrentSignal,
-                deployPositionSignal, leftDeployOutputSignal);
+                deployPositionSignal, deployVelocitySignal, leftDeployOutputSignal);
 
         double armPosition = deployPositionSignal.getValueAsDouble();
 
@@ -454,9 +463,21 @@ public class Intake extends SubsystemBase {
 
     // ==================== SYSID CHARACTERIZATION ====================
 
-    /** Apply raw voltage to the deploy motor (for SysId). */
+    /**
+     * Apply raw voltage to both deploy motors (for SysId).
+     * Right motor is CW_Positive (opposed to left), so passing the same voltage
+     * value causes it to physically move the arm in the same direction as left.
+     * Stores the commanded voltage so getDeployMotorVoltage() can log it accurately.
+     */
     public void setDeployVoltage(double volts) {
+        sysIdDeployVolts = volts;
         leftDeployMotor.setVoltage(volts);
+        rightDeployMotor.setControl(rightDeployRequest.withOutput(volts));
+    }
+
+    /** Returns the last commanded deploy voltage (for SysId logging). */
+    public double getDeployMotorVoltage() {
+        return sysIdDeployVolts;
     }
 
     /** Deploy position in mechanism rotations (for SysId logging). */
@@ -466,6 +487,6 @@ public class Intake extends SubsystemBase {
 
     /** Deploy velocity in mechanism rotations/sec (for SysId logging). */
     public double getDeployVelocityRPS() {
-        return leftDeployMotor.getVelocity().getValueAsDouble();
+        return deployVelocitySignal.getValueAsDouble();
     }
 }

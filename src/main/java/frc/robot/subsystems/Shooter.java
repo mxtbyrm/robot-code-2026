@@ -89,7 +89,9 @@ public class Shooter extends SubsystemBase {
     // ==================== CACHED STATUS SIGNALS ====================
     private final StatusSignal<AngularVelocity> flywheelVelocitySignal;
     private final StatusSignal<Angle> hoodPositionSignal;
+    private final StatusSignal<AngularVelocity> hoodVelocitySignal;
     private final StatusSignal<Angle> turretPositionSignal;
+    private final StatusSignal<AngularVelocity> turretVelocitySignal;
 
     // ==================== HEALTH ====================
     private boolean healthy = true;
@@ -141,7 +143,9 @@ public class Shooter extends SubsystemBase {
     // Cached sensor values — refreshed once per periodic in batch
     private double cachedFlywheelVelocityRPS = 0.0;
     private double cachedHoodPositionDeg = 0.0;
+    private double cachedHoodVelocityRPS = 0.0;
     private double cachedTurretPositionDeg = 0.0;
+    private double cachedTurretVelocityRPS = 0.0;
 
     // ==================== RUNTIME HEALTH MONITORING ====================
     /** Consecutive cycles where flywheel velocity deviates significantly from target. */
@@ -175,14 +179,18 @@ public class Shooter extends SubsystemBase {
         // Cache status signals — read these instead of calling .getVelocity() every cycle
         flywheelVelocitySignal = flywheelMotor.getVelocity();
         hoodPositionSignal = hoodMotor.getPosition();
+        hoodVelocitySignal = hoodMotor.getVelocity();
         turretPositionSignal = turretMotor.getPosition();
+        turretVelocitySignal = turretMotor.getVelocity();
 
         // Flywheel at 50Hz for RPM recovery detection.
         // Turret at 50Hz — tracks moving target, needs responsive feedback.
         // Hood at 40Hz — adjusts by distance, slightly less time-critical than turret.
         flywheelVelocitySignal.setUpdateFrequency(50);
         hoodPositionSignal.setUpdateFrequency(40);
+        hoodVelocitySignal.setUpdateFrequency(40);
         turretPositionSignal.setUpdateFrequency(50);
+        turretVelocitySignal.setUpdateFrequency(50);
 
         flywheelMotor.optimizeBusUtilization();
         hoodMotor.optimizeBusUtilization();
@@ -350,11 +358,13 @@ public class Shooter extends SubsystemBase {
         // ---- 0. Batch refresh all status signals ONCE per cycle ----
         // Flywheel and hood are on the CANivore bus; turret is on the rio bus.
         // refreshAll() requires all signals to share the same bus — split into two calls.
-        com.ctre.phoenix6.BaseStatusSignal.refreshAll(flywheelVelocitySignal, hoodPositionSignal);
-        com.ctre.phoenix6.BaseStatusSignal.refreshAll(turretPositionSignal);
+        com.ctre.phoenix6.BaseStatusSignal.refreshAll(flywheelVelocitySignal, hoodPositionSignal, hoodVelocitySignal);
+        com.ctre.phoenix6.BaseStatusSignal.refreshAll(turretPositionSignal, turretVelocitySignal);
         cachedFlywheelVelocityRPS = flywheelVelocitySignal.getValueAsDouble();
         cachedHoodPositionDeg = hoodPositionSignal.getValueAsDouble() * 360.0;
+        cachedHoodVelocityRPS = hoodVelocitySignal.getValueAsDouble();
         cachedTurretPositionDeg = turretPositionSignal.getValueAsDouble() * 360.0;
+        cachedTurretVelocityRPS = turretVelocitySignal.getValueAsDouble();
 
         // ---- 1. Always compute aim solution so telemetry is available ----
         updateHubCalculations();
@@ -952,28 +962,61 @@ public class Shooter extends SubsystemBase {
 
     // ==================== SYSID CHARACTERIZATION ====================
 
+    // Store commanded voltages for SysId logging (avoids Phoenix 6 terminal voltage sign issues).
+    private double sysIdFlywheelVolts = 0.0;
+    private double sysIdHoodVolts     = 0.0;
+    private double sysIdTurretVolts   = 0.0;
+
     /** Apply raw voltage to the flywheel motor (for SysId). */
     public void setFlywheelVoltage(double volts) {
+        sysIdFlywheelVolts = volts;
         flywheelMotor.setVoltage(volts);
     }
 
     /** Apply raw voltage to the hood motor (for SysId). */
     public void setHoodVoltage(double volts) {
+        sysIdHoodVolts = volts;
         hoodMotor.setVoltage(volts);
     }
 
     /** Apply raw voltage to the turret motor (for SysId). */
     public void setTurretVoltage(double volts) {
+        sysIdTurretVolts = volts;
         turretMotor.setVoltage(volts);
     }
+
+    /** Returns last commanded flywheel voltage (for SysId logging). */
+    public double getFlywheelMotorVoltage() { return sysIdFlywheelVolts; }
+
+    /** Returns last commanded hood voltage (for SysId logging). */
+    public double getHoodMotorVoltage() { return sysIdHoodVolts; }
+
+    /** Returns last commanded turret voltage (for SysId logging). */
+    public double getTurretMotorVoltage() { return sysIdTurretVolts; }
 
     /** Hood position in rotations (for SysId logging). */
     public double getHoodPositionRotations() {
         return cachedHoodPositionDeg / 360.0;
     }
 
+    /**
+     * Hood velocity in mechanism rotations/sec (for SysId logging).
+     * Hood motor is CCW_Positive — positive voltage → positive velocity. No negation needed.
+     */
+    public double getHoodVelocityRPS() {
+        return cachedHoodVelocityRPS;
+    }
+
     /** Turret position in rotations (for SysId logging). */
     public double getTurretPositionRotations() {
         return cachedTurretPositionDeg / 360.0;
+    }
+
+    /**
+     * Turret velocity in mechanism rotations/sec (for SysId logging).
+     * Turret motor is CCW_Positive — positive voltage → positive velocity. No negation needed.
+     */
+    public double getTurretVelocityRPS() {
+        return cachedTurretVelocityRPS;
     }
 }

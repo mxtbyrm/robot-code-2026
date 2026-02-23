@@ -7,6 +7,7 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import frc.robot.BallPresenceEstimator;
+import frc.robot.RobotConfig;
 import frc.robot.constants.ShooterConstants;
 import frc.robot.constants.SpindexerConstants;
 import frc.robot.HubStateTracker;
@@ -124,7 +125,7 @@ public class Superstructure extends SubsystemBase {
         this.spindexer = Spindexer.getInstance();
         this.feeder = Feeder.getInstance();
         this.shooter = Shooter.getInstance();
-        this.vision = Vision.getInstance();
+        this.vision = RobotConfig.kVisionEnabled ? Vision.getInstance() : null;
     }
 
     @Override
