@@ -1,1691 +1,825 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FRC 2026 — Basketball Arc Shooter Sim</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <style>
-      @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Outfit:wght@300;400;600;800&display=swap");
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FRC 2026 — Swerve Arc Shooter</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Outfit:wght@300;400;600;800&display=swap');
+  :root {
+    --bg:#07090d;--panel:rgba(10,13,20,0.94);--border:rgba(56,189,248,0.1);
+    --accent:#38bdf8;--accent2:#f472b6;--accent3:#a78bfa;
+    --green:#4ade80;--orange:#fb923c;--red:#f87171;--yellow:#fbbf24;
+    --text:#e2e8f0;--muted:#64748b;--dim:#1e293b;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;overflow:hidden;height:100vh;}
+  canvas{display:block;}
 
-      :root {
-        --bg: #07090d;
-        --panel: rgba(10, 13, 20, 0.94);
-        --border: rgba(56, 189, 248, 0.1);
-        --accent: #38bdf8;
-        --accent2: #f472b6;
-        --accent3: #a78bfa;
-        --green: #4ade80;
-        --orange: #fb923c;
-        --red: #f87171;
-        --yellow: #fbbf24;
-        --text: #e2e8f0;
-        --muted: #64748b;
-        --dim: #1e293b;
-      }
+  .top-bar{position:fixed;top:0;left:0;right:0;height:48px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;z-index:100;backdrop-filter:blur(20px);gap:14px;}
+  .top-bar .logo{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;color:var(--accent);letter-spacing:2px;}
+  .top-bar .sep{width:1px;height:20px;background:var(--dim);}
+  .top-bar .title{font-weight:300;font-size:13px;color:var(--muted);}
+  .score-board{margin-left:auto;display:flex;align-items:center;gap:16px;font-family:'JetBrains Mono',monospace;font-size:13px;}
+  .score-board .sc{padding:3px 14px;border-radius:16px;font-weight:700;}
+  .score-board .sc.g{background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.2);color:var(--green);}
+  .score-board .sc.r{background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.2);color:var(--red);}
+  .score-board .sc.t{background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.15);color:var(--accent);}
 
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
+  .panel{position:fixed;top:60px;width:280px;background:var(--panel);border:1px solid var(--border);border-radius:10px;z-index:100;backdrop-filter:blur(20px);overflow:hidden;max-height:calc(100vh - 76px);overflow-y:auto;}
+  .panel::-webkit-scrollbar{width:3px;}.panel::-webkit-scrollbar-thumb{background:var(--dim);border-radius:2px;}
+  .panel.left{left:14px;}.panel.right{right:14px;width:260px;}
+  .p-head{padding:12px 16px;border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);}
+  .p-sec{padding:12px 16px;border-bottom:1px solid rgba(56,189,248,0.05);}
+  .sec-label{font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+  .row{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+  .row label{font-size:11px;color:var(--text);}
+  .row .val{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);min-width:55px;text-align:right;}
+  input[type="range"]{width:100%;height:3px;-webkit-appearance:none;appearance:none;background:var(--dim);border-radius:2px;outline:none;margin:3px 0 10px;pointer-events:none;}
+  input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 0 8px rgba(56,189,248,0.35);}
+  .btn{width:100%;padding:9px;border:1px solid var(--accent2);background:rgba(244,114,182,0.07);color:var(--accent2);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;border-radius:7px;cursor:pointer;transition:all .2s;}
+  .btn:hover{background:rgba(244,114,182,0.18);box-shadow:0 0 16px rgba(244,114,182,0.15);}
+  .btn.rst{border-color:var(--muted);background:rgba(100,116,139,0.07);color:var(--muted);margin-top:6px;}
+  .btn.rst:hover{background:rgba(100,116,139,0.15);}
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+  .toggle-row label{font-size:11px;}
+  .toggle{position:relative;width:32px;height:18px;background:var(--dim);border-radius:9px;cursor:pointer;transition:background .2s;}
+  .toggle.on{background:var(--accent);}
+  .toggle::after{content:'';position:absolute;top:2.5px;left:2.5px;width:13px;height:13px;border-radius:50%;background:#fff;transition:transform .2s;}
+  .toggle.on::after{transform:translateX(14px);}
 
-      body {
-        background: var(--bg);
-        color: var(--text);
-        font-family: "Outfit", sans-serif;
-        overflow: hidden;
-        height: 100vh;
-      }
+  .t-row{display:flex;justify-content:space-between;padding:5px 16px;font-size:11px;border-bottom:1px solid rgba(56,189,248,0.03);}
+  .t-label{color:var(--muted);font-size:10px;}
+  .t-val{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);}
+  .t-val.good{color:var(--green);}.t-val.warn{color:var(--orange);}.t-val.bad{color:var(--red);}
 
-      canvas {
-        display: block;
-      }
+  .bot-bar{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:20px;align-items:center;z-index:100;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 28px;backdrop-filter:blur(16px);}
+  .stat{text-align:center;}
+  .stat .v{font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:700;display:block;}
+  .stat .l{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+  .stat .v.a{color:var(--accent);}.stat .v.p{color:var(--accent2);}.stat .v.u{color:var(--accent3);}.stat .v.g{color:var(--green);}.stat .v.y{color:var(--yellow);}
+  .ready-pill{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;padding:6px 18px;border-radius:20px;}
+  .ready-pill.ok{background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.25);color:var(--green);}
+  .ready-pill.no{background:rgba(251,146,60,0.08);border:1px solid rgba(251,146,60,0.2);color:var(--orange);}
 
-      .top-bar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 48px;
-        background: var(--panel);
-        border-bottom: 1px solid var(--border);
-        display: flex;
-        align-items: center;
-        padding: 0 20px;
-        z-index: 100;
-        backdrop-filter: blur(20px);
-        gap: 14px;
-      }
-      .top-bar .logo {
-        font-family: "JetBrains Mono", monospace;
-        font-weight: 700;
-        font-size: 13px;
-        color: var(--accent);
-        letter-spacing: 2px;
-      }
-      .top-bar .sep {
-        width: 1px;
-        height: 20px;
-        background: var(--dim);
-      }
-      .top-bar .title {
-        font-weight: 300;
-        font-size: 13px;
-        color: var(--muted);
-      }
-      .status-pill {
-        margin-left: auto;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-family: "JetBrains Mono", monospace;
-        font-size: 10px;
-        padding: 3px 10px;
-        border-radius: 16px;
-        background: rgba(74, 222, 128, 0.06);
-        border: 1px solid rgba(74, 222, 128, 0.15);
-        color: var(--green);
-      }
-      .status-pill .dot {
-        width: 5px;
-        height: 5px;
-        border-radius: 50%;
-        background: var(--green);
-        animation: blink 2s infinite;
-      }
-      @keyframes blink {
-        0%,
-        100% {
-          opacity: 1;
+  .keys{position:fixed;bottom:16px;right:14px;z-index:100;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);text-align:right;line-height:2;}
+  .keys kbd{background:var(--dim);padding:1px 5px;border-radius:3px;color:var(--text);font-size:9px;}
+
+  .score-popup{position:fixed;top:45%;left:50%;transform:translate(-50%,-50%) scale(0);font-family:'JetBrains Mono',monospace;font-size:52px;font-weight:800;z-index:200;pointer-events:none;opacity:0;transition:transform .25s cubic-bezier(.34,1.56,.64,1),opacity .6s;}
+  .score-popup.show{transform:translate(-50%,-50%) scale(1);opacity:1;}
+  .score-popup.scored{color:var(--green);text-shadow:0 0 50px rgba(74,222,128,0.7);}
+  .score-popup.missed{color:var(--red);text-shadow:0 0 50px rgba(248,113,113,0.7);}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <span class="logo">FRC 2026</span><span class="sep"></span>
+  <span class="title">REBUILT — Swerve Shooter</span>
+  <div class="score-board">
+    <span class="sc g" id="sb-score">SCORES: 0</span>
+    <span class="sc r" id="sb-miss">MISS: 0</span>
+    <span class="sc t" id="sb-total">SHOTS: 0</span>
+  </div>
+</div>
+
+<div class="panel left">
+  <div class="p-head">⚙ Controls</div>
+  <div class="p-sec">
+    <div class="sec-label">Target (Driven)</div>
+    <div class="row"><label>Distance</label><span class="val" id="v-dist">3.5 m</span></div>
+    <input type="range" id="s-dist" min="1.2" max="6.5" step="0.1" value="3.5">
+    <div class="row"><label>Turret Angle</label><span class="val" id="v-turret">0°</span></div>
+    <input type="range" id="s-turret" min="-180" max="180" step="1" value="0">
+  </div>
+  <div class="p-sec">
+    <div class="sec-label">Physics Tuning</div>
+    <div class="row"><label>Efficiency</label><span class="val" id="v-eff">0.30</span></div>
+    <input type="range" id="s-eff" min="0.10" max="0.60" step="0.01" value="0.30" style="pointer-events:auto;">
+    <div class="row"><label>Apex Clearance</label><span class="val" id="v-apex">0.30 m</span></div>
+    <input type="range" id="s-apex" min="0.05" max="1.0" step="0.05" value="0.30" style="pointer-events:auto;">
+    <div class="row"><label>Bias Near</label><span class="val" id="v-bn">1.00</span></div>
+    <input type="range" id="s-bn" min="0.80" max="1.40" step="0.01" value="1.00" style="pointer-events:auto;">
+    <div class="row"><label>Bias Far</label><span class="val" id="v-bf">1.00</span></div>
+    <input type="range" id="s-bf" min="0.80" max="1.40" step="0.01" value="1.00" style="pointer-events:auto;">
+  </div>
+  <div class="p-sec">
+    <div class="sec-label">Display</div>
+    <div class="toggle-row"><label>Trajectory Arc</label><div class="toggle on" id="tg-traj" onclick="tog('traj')"></div></div>
+    <div class="toggle-row"><label>Apex Marker</label><div class="toggle on" id="tg-apexm" onclick="tog('apexm')"></div></div>
+    <div class="toggle-row"><label>Clearance Lines</label><div class="toggle on" id="tg-clear" onclick="tog('clear')"></div></div>
+    <div class="toggle-row"><label>Rim Height Line</label><div class="toggle on" id="tg-side" onclick="tog('side')"></div></div>
+    <div class="toggle-row"><label>Auto-Rotate Cam</label><div class="toggle" id="tg-rot" onclick="tog('rot')"></div></div>
+  </div>
+  <div class="p-sec">
+    <button class="btn" onclick="fireBall()">🔥 FIRE — <kbd>Space</kbd></button>
+    <button class="btn rst" onclick="resetScore()">↻ Reset Score</button>
+  </div>
+</div>
+
+<div class="panel right">
+  <div class="p-head">📊 Telemetry</div>
+  <div class="t-row"><span class="t-label">Flywheel</span><span class="t-val" id="t-fw">—</span></div>
+  <div class="t-row"><span class="t-label">Hood Angle</span><span class="t-val" id="t-hood">—</span></div>
+  <div class="t-row"><span class="t-label">Exit Angle</span><span class="t-val" id="t-ea">—</span></div>
+  <div class="t-row"><span class="t-label">Exit Velocity</span><span class="t-val" id="t-ev">—</span></div>
+  <div class="t-row"><span class="t-label">Apex Height</span><span class="t-val" id="t-ah">—</span></div>
+  <div class="t-row"><span class="t-label">Apex above Rim</span><span class="t-val" id="t-ac">—</span></div>
+  <div class="t-row"><span class="t-label">Descent Angle</span><span class="t-val" id="t-da">—</span></div>
+  <div class="t-row"><span class="t-label">Time of Flight</span><span class="t-val" id="t-tof">—</span></div>
+  <div class="t-row"><span class="t-label">Near Rim Clear</span><span class="t-val" id="t-nrc">—</span></div>
+  <div class="t-row"><span class="t-label">Far Rim Clear</span><span class="t-val" id="t-frc">—</span></div>
+  <div class="t-row"><span class="t-label">Will Score?</span><span class="t-val" id="t-score">—</span></div>
+</div>
+
+<div class="bot-bar">
+  <div class="stat"><span class="v a" id="b-dist">3.5</span><span class="l">Distance (m)</span></div>
+  <div class="stat"><span class="v p" id="b-apex">—</span><span class="l">Apex (m)</span></div>
+  <div class="stat"><span class="v u" id="b-desc">—</span><span class="l">Descent°</span></div>
+  <div class="stat"><span class="v g" id="b-nrc">—</span><span class="l">Near Clear (cm)</span></div>
+  <div class="stat"><span class="v y" id="b-frc">—</span><span class="l">Far Clear (cm)</span></div>
+  <div class="ready-pill no" id="b-ready">CALCULATING</div>
+</div>
+
+<div class="keys"><kbd>WASD</kbd> Drive &nbsp; <kbd>◀▶</kbd> Spin &nbsp; <kbd>Space</kbd> Fire &nbsp; <kbd>Drag</kbd> Orbit</div>
+<div class="score-popup" id="score-popup"></div>
+
+<script>
+// ═══════════════════════════════════════
+// CONSTANTS & GLOBALS
+// ═══════════════════════════════════════
+const C = {
+  ballDiam: 0.150, ballR: 0.075,
+  hubRimHeight: 1.88, 
+  hubInnerR: 0.41, 
+  hubOuterR: 0.61, 
+  hubDepth: 0.45, 
+  exitH: 0.610, turretH: 0.45,
+  hoodMin: 15, hoodMax: 45, botFwDiam: 0.1016,
+  minDist: 1.2, maxDist: 6.5, g: 9.81
+};
+
+let eff = 0.30, apexClear = 0.30, biasNear = 1.0, biasFar = 1.0;
+let showTraj = true, showApexM = true, showClear = true, showSide = true, autoRot = false;
+let scores = 0, misses = 0, totalShots = 0;
+let activeHoodAngle = 15;
+let balls = [];
+
+
+const keys = {};
+window.addEventListener('keydown', e => { keys[e.code] = true; if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault(); });
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+let rx = 0, rz = 3.5;
+let rob_vx = 0, rob_vz = 0;
+let tRad = Math.PI / 2;
+let robot_heading = 0;
+let lastFire = 0;
+
+// ═══════════════════════════════════════
+// PHYSICS KINEMATICS
+// ═══════════════════════════════════════
+function hoodToExit(hd) { const eMin = 90 - C.hoodMin, eMax = 90 - C.hoodMax; return eMin - ((hd - C.hoodMin) / (C.hoodMax - C.hoodMin)) * (eMin - eMax); }
+function biasAt(d) { const r = C.maxDist - C.minDist; if (r <= 0) return biasNear; const t = Math.max(0, Math.min(1, (d - C.minDist) / r)); return biasNear + t * (biasFar - biasNear); }
+function trajVel(dist, aRad, dH) { const ex = dist * Math.tan(aRad) - dH; if (ex <= 0) return 25; return (dist / Math.cos(aRad)) * Math.sqrt(C.g / (2 * ex)); }
+function apexVel(aRad, climb) { if (climb <= 0) return 0; const s = Math.sin(aRad); if (s <= 0) return 25; return Math.sqrt(2 * C.g * climb) / s; }
+function v2rps(v) { return v / (Math.PI * C.botFwDiam * eff); }
+function ballH(vx, vy0, x) { if (vx <= 0.001) return C.exitH; const t = x / vx; return C.exitH + vy0 * t - 0.5 * C.g * t * t; }
+
+function simulateShot(dist, hd) {
+  const dH = C.hubRimHeight - C.exitH;
+  const exitDeg = hoodToExit(hd);
+  const exitRad = exitDeg * Math.PI / 180;
+
+  const vTraj = trajVel(dist, exitRad, dH);
+  const vApex = apexVel(exitRad, dH + apexClear);
+  let exitV = Math.max(vTraj, vApex) * biasAt(dist);
+
+  const rps = v2rps(exitV);
+  const vx = exitV * Math.cos(exitRad);
+  const vy0 = exitV * Math.sin(exitRad);
+  const tof = vx > 0.01 ? dist / vx : 2;
+  const vyHub = vy0 - C.g * tof;
+  const descDeg = vyHub < 0 ? Math.atan(Math.abs(vyHub) / vx) * 180 / Math.PI : 0;
+  const apexH = C.exitH + (vy0 * vy0) / (2 * C.g);
+  const apexAboveRim = apexH - C.hubRimHeight;
+  const tApex = vy0 / C.g;
+  const xApex = vx * tApex;
+
+  const nearEdgeX = dist - C.hubOuterR;
+  const farEdgeX = dist + C.hubOuterR;
+  const hNear = ballH(vx, vy0, nearEdgeX);
+  const hFar = ballH(vx, vy0, farEdgeX);
+  const nearRimClear = hNear - C.hubRimHeight - C.ballR;
+  const farRimClear = hFar - C.hubRimHeight - C.ballR;
+
+  const hCenter = ballH(vx, vy0, dist);
+  const descending = vyHub < 0;
+  const willScore = apexAboveRim > 0 && nearRimClear > 0 && descending && hCenter <= C.hubRimHeight + C.ballR;
+
+  return { hoodAng: hd, exitDeg, exitRad, exitV, rps, vx, vy0, tof, descDeg, apexH, apexAboveRim, xApex, nearEdgeX, farEdgeX, hNear, hFar, nearRimClear, farRimClear, hCenter, willScore };
+}
+
+function computeShot(dist) {
+  const frac = Math.max(0, Math.min(1, (dist - C.minDist) / (C.maxDist - C.minDist)));
+  const hoodAng = C.hoodMin + frac * (C.hoodMax - C.hoodMin);
+  
+  return simulateShot(dist, hoodAng);
+  if (shot.willScore) return shot;
+
+  let bestShot = shot;
+  for (let offset = 1; offset <= C.hoodMax - C.hoodMin; offset++) {
+    let testUp = activeHoodAngle + offset;
+    if (testUp <= C.hoodMax) {
+      let s = simulateShot(dist, testUp);
+      if (s.willScore) { activeHoodAngle = testUp; return s; }
+    }
+    let testDown = activeHoodAngle - offset;
+    if (testDown >= C.hoodMin) {
+      let s = simulateShot(dist, testDown);
+      if (s.willScore) { activeHoodAngle = testDown; return s; }
+    }
+  }
+  return bestShot;
+}
+
+// ═══════════════════════════════════════
+// BALL FIRING & LOGIC
+// ═══════════════════════════════════════
+function fireBall() {
+  let dist = Math.hypot(rx, rz);
+  if (dist < 0.1) dist = 0.1;
+  
+  let baseShot = computeShot(dist); 
+  let tof = baseShot.tof;
+  
+  let vtX = 0 - rob_vx * tof;
+  let vtZ = 0 - rob_vz * tof;
+  let vdx = vtX - rx;
+  let vdz = vtZ - rz;
+  
+  let vDist = Math.max(C.minDist, Math.min(C.maxDist, Math.hypot(vdx, vdz)));
+  let abs_tRad = Math.atan2(-vdz, vdx); 
+  
+  let shot = computeShot(vDist);
+  totalShots++;
+
+  let rel_vx = shot.vx * Math.cos(abs_tRad);
+  let rel_vz = -shot.vx * Math.sin(abs_tRad);
+  let glob_vx = rel_vx + rob_vx;
+  let glob_vz = rel_vz + rob_vz;
+
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(C.ballR, 16, 16),
+    new THREE.MeshStandardMaterial({color:0xfbbf24, roughness:0.5, metalness:0.2, emissive:0xfbbf24, emissiveIntensity:0.4}));
+  ball.castShadow = true; scene.add(ball);
+
+  const tg = new THREE.BufferGeometry();
+  tg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(100 * 3), 3));
+  const trail = new THREE.Points(tg, new THREE.PointsMaterial({color:0xfbbf24, size:0.02, transparent:true, opacity:0.4}));
+  scene.add(trail);
+
+  let ex = rx + 0.35 * Math.cos(abs_tRad);
+  let ez = rz - 0.35 * Math.sin(abs_tRad);
+
+  balls.push({
+    mesh: ball, trail, buf: [],
+    x: ex, y: C.exitH, z: ez,              
+    vx: glob_vx, vy: shot.vy0, vz: glob_vz,     
+    dist: vDist, lastT: clock.getElapsedTime(), 
+    wasAboveRim: false, resolved: false, alive: true
+  });
+  updateUI();
+}
+
+function updateBalls(now) {
+  balls.forEach(b => {
+    if (!b.alive) return;
+    
+    let dt = now - b.lastT; b.lastT = now;
+    if (dt > 0.1) dt = 0.016; 
+    const prevY = b.y; 
+
+    b.vy -= C.g * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt;
+
+    if (b.y > C.hubRimHeight) b.wasAboveRim = true;
+    b.mesh.position.set(b.x, b.y, b.z);
+
+    b.buf.push(b.x, b.y, b.z);
+    if (b.buf.length > 300) b.buf.splice(0, 3);
+    const arr = b.trail.geometry.attributes.position.array;
+    for (let i = 0; i < 300; i++) arr[i] = i < b.buf.length ? b.buf[i] : (b.buf[Math.max(0, b.buf.length - 3 + (i % 3))] || 0);
+    b.trail.geometry.attributes.position.needsUpdate = true;
+
+    if (b.y < -0.5 || Math.hypot(b.x, b.z) > C.maxDist + 2) {
+      if (!b.resolved) { misses++; showPopup(false); flashHub(false); b.resolved = true; }
+      b.alive = false; scene.remove(b.mesh); scene.remove(b.trail); return;
+    }
+    if (b.resolved) return;
+
+    const cx = b.x; const cz = b.z;
+    const radCenter = Math.max(0.001, Math.hypot(cx, cz));
+    const hubBottomY = C.hubRimHeight - C.hubDepth;
+
+    if (radCenter < C.hubOuterR + C.ballR + 0.1 && b.y <= C.hubRimHeight && b.y >= hubBottomY) {
+      const depthFrac = (C.hubRimHeight - b.y) / C.hubDepth; 
+      const radiusAtY = C.hubOuterR - depthFrac * (C.hubOuterR - C.hubInnerR);
+      const overlap = (radCenter + C.ballR) - radiusAtY;
+
+      if (overlap > 0 && overlap < C.ballR * 2) { 
+        let nx_flat = -cx / radCenter;
+        let nz_flat = -cz / radCenter;
+        
+        const dx_funnel = C.hubOuterR - C.hubInnerR;
+        const dy_funnel = C.hubDepth;
+        const len = Math.hypot(dx_funnel, dy_funnel);
+        
+        let ny = dx_funnel / len; 
+        let n_inward = dy_funnel / len;
+        
+        let nx = nx_flat * n_inward;
+        let nz = nz_flat * n_inward;
+
+        if (!b.wasAboveRim) { nx = -nx; ny = -ny; nz = -nz; }
+        const dot = b.vx * nx + b.vy * ny + b.vz * nz;
+
+        if (dot < 0) { 
+          const restitution = 0.55; 
+          b.vx -= (1 + restitution) * dot * nx;
+          b.vy -= (1 + restitution) * dot * ny;
+          b.vz -= (1 + restitution) * dot * nz;
+
+          const pushAmt = b.wasAboveRim ? overlap : -overlap; 
+          b.x -= nx_flat * pushAmt; 
+          b.z -= nz_flat * pushAmt;
         }
-        50% {
-          opacity: 0.3;
-        }
       }
-
-      /* ── PANELS ── */
-      .panel {
-        position: fixed;
-        top: 60px;
-        width: 280px;
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        z-index: 100;
-        backdrop-filter: blur(20px);
-        overflow: hidden;
-        max-height: calc(100vh - 76px);
-        overflow-y: auto;
-      }
-      .panel::-webkit-scrollbar {
-        width: 3px;
-      }
-      .panel::-webkit-scrollbar-thumb {
-        background: var(--dim);
-        border-radius: 2px;
-      }
-      .panel.left {
-        left: 14px;
-      }
-      .panel.right {
-        right: 14px;
-        width: 260px;
-      }
-
-      .p-head {
-        padding: 12px 16px;
-        border-bottom: 1px solid var(--border);
-        font-family: "JetBrains Mono", monospace;
-        font-size: 10px;
-        font-weight: 600;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        color: var(--accent);
-      }
-      .p-sec {
-        padding: 12px 16px;
-        border-bottom: 1px solid rgba(56, 189, 248, 0.05);
-      }
-      .sec-label {
-        font-size: 9px;
-        font-weight: 600;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        color: var(--muted);
-        margin-bottom: 8px;
-      }
-
-      .row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 6px;
-      }
-      .row label {
-        font-size: 11px;
-        color: var(--text);
-      }
-      .row .val {
-        font-family: "JetBrains Mono", monospace;
-        font-size: 11px;
-        color: var(--accent);
-        min-width: 55px;
-        text-align: right;
-      }
-
-      input[type="range"] {
-        width: 100%;
-        height: 3px;
-        -webkit-appearance: none;
-        appearance: none;
-        background: var(--dim);
-        border-radius: 2px;
-        outline: none;
-        margin: 3px 0 10px;
-      }
-      input[type="range"]::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        background: var(--accent);
-        cursor: pointer;
-        box-shadow: 0 0 8px rgba(56, 189, 248, 0.35);
-      }
-
-      .btn {
-        width: 100%;
-        padding: 9px;
-        border: 1px solid var(--accent2);
-        background: rgba(244, 114, 182, 0.07);
-        color: var(--accent2);
-        font-family: "JetBrains Mono", monospace;
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        border-radius: 7px;
-        cursor: pointer;
-        transition: all 0.2s;
-      }
-      .btn:hover {
-        background: rgba(244, 114, 182, 0.18);
-        box-shadow: 0 0 16px rgba(244, 114, 182, 0.15);
-      }
-
-      .toggle-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 6px;
-      }
-      .toggle-row label {
-        font-size: 11px;
-      }
-      .toggle {
-        position: relative;
-        width: 32px;
-        height: 18px;
-        background: var(--dim);
-        border-radius: 9px;
-        cursor: pointer;
-        transition: background 0.2s;
-      }
-      .toggle.on {
-        background: var(--accent);
-      }
-      .toggle::after {
-        content: "";
-        position: absolute;
-        top: 2.5px;
-        left: 2.5px;
-        width: 13px;
-        height: 13px;
-        border-radius: 50%;
-        background: #fff;
-        transition: transform 0.2s;
-      }
-      .toggle.on::after {
-        transform: translateX(14px);
-      }
-
-      /* telem */
-      .t-row {
-        display: flex;
-        justify-content: space-between;
-        padding: 5px 16px;
-        font-size: 11px;
-        border-bottom: 1px solid rgba(56, 189, 248, 0.03);
-      }
-      .t-label {
-        color: var(--muted);
-        font-size: 10px;
-      }
-      .t-val {
-        font-family: "JetBrains Mono", monospace;
-        font-size: 11px;
-        color: var(--text);
-      }
-      .t-val.good {
-        color: var(--green);
-      }
-      .t-val.warn {
-        color: var(--orange);
-      }
-      .t-val.bad {
-        color: var(--red);
-      }
-
-      /* bottom bar */
-      .bot-bar {
-        position: fixed;
-        bottom: 16px;
-        left: 50%;
-        transform: translateX(-50%);
-        display: flex;
-        gap: 20px;
-        align-items: center;
-        z-index: 100;
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 10px 28px;
-        backdrop-filter: blur(16px);
-      }
-      .stat {
-        text-align: center;
-      }
-      .stat .v {
-        font-family: "JetBrains Mono", monospace;
-        font-size: 17px;
-        font-weight: 700;
-        display: block;
-      }
-      .stat .l {
-        font-size: 9px;
-        color: var(--muted);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-      .stat .v.a {
-        color: var(--accent);
-      }
-      .stat .v.p {
-        color: var(--accent2);
-      }
-      .stat .v.u {
-        color: var(--accent3);
-      }
-      .stat .v.g {
-        color: var(--green);
-      }
-      .stat .v.y {
-        color: var(--yellow);
-      }
-
-      .ready-pill {
-        font-family: "JetBrains Mono", monospace;
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        padding: 6px 18px;
-        border-radius: 20px;
-      }
-      .ready-pill.ok {
-        background: rgba(74, 222, 128, 0.08);
-        border: 1px solid rgba(74, 222, 128, 0.25);
-        color: var(--green);
-      }
-      .ready-pill.no {
-        background: rgba(251, 146, 60, 0.08);
-        border: 1px solid rgba(251, 146, 60, 0.2);
-        color: var(--orange);
-      }
-
-      .keys {
-        position: fixed;
-        bottom: 16px;
-        right: 14px;
-        z-index: 100;
-        font-family: "JetBrains Mono", monospace;
-        font-size: 9px;
-        color: var(--muted);
-        text-align: right;
-        line-height: 2;
-      }
-      .keys kbd {
-        background: var(--dim);
-        padding: 1px 5px;
-        border-radius: 3px;
-        color: var(--text);
-        font-size: 9px;
-      }
-
-      /* Score popup */
-      .score-popup {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) scale(0);
-        font-family: "JetBrains Mono", monospace;
-        font-size: 48px;
-        font-weight: 800;
-        color: var(--green);
-        z-index: 200;
-        pointer-events: none;
-        text-shadow: 0 0 40px rgba(74, 222, 128, 0.6);
-        transition:
-          transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
-          opacity 0.5s;
-        opacity: 0;
-      }
-      .score-popup.show {
-        transform: translate(-50%, -50%) scale(1);
-        opacity: 1;
-      }
-      .score-popup.miss {
-        color: var(--red);
-        text-shadow: 0 0 40px rgba(248, 113, 113, 0.6);
-      }
-    </style>
-  </head>
-  <body>
-    <div class="top-bar">
-      <span class="logo">FRC 2026</span><span class="sep"></span>
-      <span class="title">REBUILT — Basketball Arc Shooter Physics</span>
-      <div class="status-pill"><span class="dot"></span>LIVE SIM</div>
-    </div>
-
-    <!-- LEFT PANEL: CONTROLS -->
-    <div class="panel left">
-      <div class="p-head">⚙ Controls</div>
-      <div class="p-sec">
-        <div class="sec-label">Target</div>
-        <div class="row">
-          <label>Distance</label><span class="val" id="v-dist">3.5 m</span>
-        </div>
-        <input
-          type="range"
-          id="s-dist"
-          min="1.2"
-          max="6.5"
-          step="0.1"
-          value="3.5"
-        />
-        <div class="row">
-          <label>Turret Angle</label><span class="val" id="v-turret">0°</span>
-        </div>
-        <input
-          type="range"
-          id="s-turret"
-          min="-175"
-          max="175"
-          step="1"
-          value="0"
-        />
-      </div>
-      <div class="p-sec">
-        <div class="sec-label">Physics Tuning</div>
-        <div class="row">
-          <label>Efficiency</label><span class="val" id="v-eff">0.30</span>
-        </div>
-        <input
-          type="range"
-          id="s-eff"
-          min="0.10"
-          max="0.60"
-          step="0.01"
-          value="0.30"
-        />
-        <div class="row">
-          <label>Apex Clearance</label
-          ><span class="val" id="v-apex">0.30 m</span>
-        </div>
-        <input
-          type="range"
-          id="s-apex"
-          min="0.05"
-          max="1.0"
-          step="0.05"
-          value="0.30"
-        />
-        <div class="row">
-          <label>Bias Near</label><span class="val" id="v-bn">1.00</span>
-        </div>
-        <input
-          type="range"
-          id="s-bn"
-          min="0.80"
-          max="1.40"
-          step="0.01"
-          value="1.00"
-        />
-        <div class="row">
-          <label>Bias Far</label><span class="val" id="v-bf">1.00</span>
-        </div>
-        <input
-          type="range"
-          id="s-bf"
-          min="0.80"
-          max="1.40"
-          step="0.01"
-          value="1.00"
-        />
-      </div>
-      <div class="p-sec">
-        <div class="sec-label">Display</div>
-        <div class="toggle-row">
-          <label>Trajectory Arc</label>
-          <div class="toggle on" id="tg-traj" onclick="tog('traj')"></div>
-        </div>
-        <div class="toggle-row">
-          <label>Apex Marker</label>
-          <div class="toggle on" id="tg-apexm" onclick="tog('apexm')"></div>
-        </div>
-        <div class="toggle-row">
-          <label>Clearance Lines</label>
-          <div class="toggle on" id="tg-clear" onclick="tog('clear')"></div>
-        </div>
-        <div class="toggle-row">
-          <label>Side View Guide</label>
-          <div class="toggle on" id="tg-side" onclick="tog('side')"></div>
-        </div>
-        <div class="toggle-row">
-          <label>Auto-Rotate Cam</label>
-          <div class="toggle" id="tg-rot" onclick="tog('rot')"></div>
-        </div>
-      </div>
-      <div class="p-sec">
-        <button class="btn" onclick="fireBall()">
-          🔥 FIRE — <kbd>Space</kbd>
-        </button>
-      </div>
-    </div>
-
-    <!-- RIGHT PANEL: TELEMETRY -->
-    <div class="panel right">
-      <div class="p-head">📊 Telemetry</div>
-      <div class="t-row">
-        <span class="t-label">Flywheel</span
-        ><span class="t-val" id="t-fw">—</span>
-      </div>
-      <div class="t-row">
-        <span class="t-label">Hood Angle</span
-        ><span class="t-val" id="t-hood">—</span>
-      </div>
-      <div class="t-row">
-        <span class="t-label">Exit Angle</span
-        ><span class="t-val" id="t-ea">—</span>
-      </div>
-      <div class="t-row">
-        <span class="t-label">Exit Velocity</span
-        ><span class="t-val" id="t-ev">—</span>
-      </div>
-      <div class="t-row">
-        <span class="t-label">Surface Speed</span
-        ><span class="t-val" id="t-ss">—</span>
-      </div>
-      <div class="t-row">
-        <span class="t-label">Apex Height</span
-        ><span class="t-val" id="t-ah">—</span>
-      </div>
-      <div class="t-row">
-        <span class="t-label">Apex above Hub</span
-        ><span class="t-val" id="t-ac">—</span>
-      </div>
-      <div class="t-row">
-        <span class="t-label">Descent Angle</span
-        ><span class="t-val" id="t-da">—</span>
-      </div>
-      <div class="t-row">
-        <span class="t-label">Time of Flight</span
-        ><span class="t-val" id="t-tof">—</span>
-      </div>
-      <div class="t-row">
-        <span class="t-label">Entry Margin</span
-        ><span class="t-val" id="t-em">—</span>
-      </div>
-      <div class="t-row">
-        <span class="t-label">Rim Clearance</span
-        ><span class="t-val" id="t-rc">—</span>
-      </div>
-      <div class="t-row">
-        <span class="t-label">Score?</span
-        ><span class="t-val" id="t-score">—</span>
-      </div>
-    </div>
-
-    <!-- BOTTOM STATS BAR -->
-    <div class="bot-bar">
-      <div class="stat">
-        <span class="v a" id="b-dist">3.5</span
-        ><span class="l">Distance (m)</span>
-      </div>
-      <div class="stat">
-        <span class="v p" id="b-apex">2.1</span><span class="l">Apex (m)</span>
-      </div>
-      <div class="stat">
-        <span class="v u" id="b-desc">48</span><span class="l">Descent°</span>
-      </div>
-      <div class="stat">
-        <span class="v y" id="b-clear">0.3</span
-        ><span class="l">Clearance (m)</span>
-      </div>
-      <div class="ready-pill no" id="b-ready">CALCULATING</div>
-    </div>
-
-    <div class="keys">
-      <kbd>Space</kbd> Fire &nbsp; <kbd>Drag</kbd> Orbit &nbsp;
-      <kbd>Scroll</kbd> Zoom
-    </div>
-    <div class="score-popup" id="score-popup">SCORE!</div>
-
-    <script>
-      // ══════════════════════════════════════════════
-      // CONSTANTS
-      // ══════════════════════════════════════════════
-      const C = {
-        ballDiam: 0.15, // Already correct for 2026 FUEL!
-        ballR: 0.075,
-        ballMass: 0.215, // Verify the official weight of the foam FUEL
-        hubHeight: 1.82, // <-- CHANGE THIS: Enter the new TE-26300 Hub height (in meters)
-        hubInnerDiam: 1.05, // <-- CHANGE THIS: Enter the top opening diameter of the 2026 Hub Funnel
-        hubRimThickness: 0.04,
-        exitH: 0.61,
-        turretH: 0.45,
-        hoodH: 0.5,
-        hoodMin: 27.5,
-        hoodMax: 42.5,
-        botFwDiam: 0.1016,
-        topFwDiam: 0.0508,
-        minDist: 1.2,
-        maxDist: 6.5,
-        g: 9.81,
-      };
-      const hubR = C.hubInnerDiam / 2;
-
-      let eff = 0.3,
-        apexClear = 0.3,
-        biasNear = 1.0,
-        biasFar = 1.0;
-
-      // Toggle states
-      let showTraj = true,
-        showApexM = true,
-        showClear = true,
-        showSide = true,
-        autoRot = false;
-
-      // ══════════════════════════════════════════════
-      // PHYSICS (from ShooterPhysics.java)
-      // ══════════════════════════════════════════════
-      function hoodToExit(hoodDeg) {
-        const eMin = 90 - C.hoodMin,
-          eMax = 90 - C.hoodMax;
-        const f = (hoodDeg - C.hoodMin) / (C.hoodMax - C.hoodMin);
-        return eMin - f * (eMin - eMax);
-      }
-
-      function biasAt(d) {
-        const r = C.maxDist - C.minDist;
-        if (r <= 0) return biasNear;
-        const t = Math.max(0, Math.min(1, (d - C.minDist) / r));
-        return biasNear + t * (biasFar - biasNear);
-      }
-
-      function trajVel(dist, aRad, dH) {
-        const excess = dist * Math.tan(aRad) - dH;
-        if (excess <= 0) return 25.0;
-        return (dist / Math.cos(aRad)) * Math.sqrt(C.g / (2 * excess));
-      }
-
-      function apexVel(aRad, climb) {
-        if (climb <= 0) return 0;
-        const s = Math.sin(aRad);
-        if (s <= 0) return 25.0;
-        return Math.sqrt(2 * C.g * climb) / s;
-      }
-
-      function v2rps(v) {
-        return v / (Math.PI * C.botFwDiam * eff);
-      }
-      function rps2v(r) {
-        return r * Math.PI * C.botFwDiam * eff;
-      }
-
-      function computeShot(dist) {
-        const dH = C.hubHeight - C.exitH;
-        const t = Math.max(
-          0,
-          Math.min(1, (dist - C.minDist) / (C.maxDist - C.minDist)),
-        );
-        const hoodAng = C.hoodMin + t * (C.hoodMax - C.hoodMin);
-        const exitDeg = hoodToExit(hoodAng);
-        const exitRad = (exitDeg * Math.PI) / 180;
-
-        // Constraint 1: arrive at hub height
-        const vTraj = trajVel(dist, exitRad, dH);
-        // Constraint 2: apex must be above hub + clearance
-        const vApex = apexVel(exitRad, dH + apexClear);
-        // Take higher
-        let exitV = Math.max(vTraj, vApex);
-        // Apply bias
-        exitV *= biasAt(dist);
-
-        const rps = v2rps(exitV);
-        const vx = exitV * Math.cos(exitRad);
-        const vy0 = exitV * Math.sin(exitRad);
-        const tof = vx > 0.01 ? dist / vx : 2;
-        const vyHub = vy0 - C.g * tof;
-        const descDeg =
-          vyHub < 0 ? (Math.atan(Math.abs(vyHub) / vx) * 180) / Math.PI : 0;
-        const apexH = C.exitH + (vy0 * vy0) / (2 * C.g);
-        const apexAboveHub = apexH - C.hubHeight;
-        const surfSpeed = rps * Math.PI * C.botFwDiam;
-        const geoMargin = (C.hubInnerDiam - C.ballDiam) / 2;
-        const entryMargin = geoMargin * Math.sin((descDeg * Math.PI) / 180);
-
-        // Apex horizontal position: where does the ball peak?
-        const tApex = vy0 / C.g; // time to reach apex
-        const xApex = vx * tApex; // horizontal distance at apex
-
-        // Ball height at the hub rim edges (at x = dist ± hubR)
-        // Height at x: y(x) = exitH + vy0*(x/vx) - 0.5*g*(x/vx)^2
-        function heightAt(x) {
-          const tt = x / vx;
-          return C.exitH + vy0 * tt - 0.5 * C.g * tt * tt;
-        }
-        const nearEdgeX = dist - hubR;
-        const farEdgeX = dist + hubR;
-        const hNearEdge = heightAt(nearEdgeX);
-        const hFarEdge = heightAt(farEdgeX);
-        // Rim clearance: ball center height at edge minus hub height minus ball radius
-        const nearRimClear = hNearEdge - C.hubHeight - C.ballR;
-        const farRimClear = hFarEdge - C.hubHeight - C.ballR;
-        const minRimClear = Math.min(nearRimClear, farRimClear);
-
-        // Ball height at hub center
-        const hAtCenter = heightAt(dist);
-        // Does ball actually descend through? It must be descending (vyHub < 0)
-        // and be near hub height at hub distance
-        const isDescending = vyHub < 0;
-        const landsInHub =
-          isDescending && Math.abs(hAtCenter - C.hubHeight) < 0.5;
-        const clearsEdges = minRimClear > 0;
-        const scores = landsInHub && clearsEdges && apexAboveHub >= 0;
-
-        return {
-          hoodAng,
-          exitDeg,
-          exitRad,
-          exitV,
-          rps,
-          vx,
-          vy0,
-          tof,
-          descDeg,
-          apexH,
-          apexAboveHub,
-          surfSpeed,
-          entryMargin,
-          minRimClear,
-          xApex,
-          tApex,
-          nearEdgeX,
-          farEdgeX,
-          hNearEdge,
-          hFarEdge,
-          scores,
-          heightAt,
-        };
-      }
-
-      // ══════════════════════════════════════════════
-      // THREE.JS SCENE
-      // ══════════════════════════════════════════════
-      let scene, camera, renderer, clock;
-      let robotGroup, turretGroup, hoodGroup, fwBot, fwTop;
-      let hubGroup, hubRimNear, hubRimFar;
-      let trajLine, trajGlow, apexMarker, apexLine;
-      let clearNearLine, clearFarLine, clearNearDot, clearFarDot;
-      let sideGuide, gridHelper;
-      let balls = [];
-
-      function init() {
-        scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x07090d, 0.03);
-
-        camera = new THREE.PerspectiveCamera(
-          50,
-          innerWidth / innerHeight,
-          0.1,
-          100,
-        );
-        renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(innerWidth, innerHeight);
-        renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.1;
-        document.body.appendChild(renderer.domElement);
-
-        clock = new THREE.Clock();
-
-        // Lights
-        scene.add(new THREE.AmbientLight(0x334466, 0.5));
-        const sun = new THREE.DirectionalLight(0xffffff, 0.7);
-        sun.position.set(5, 12, 5);
-        sun.castShadow = true;
-        sun.shadow.mapSize.set(2048, 2048);
-        sun.shadow.camera.left = -10;
-        sun.shadow.camera.right = 10;
-        sun.shadow.camera.top = 10;
-        sun.shadow.camera.bottom = -10;
-        scene.add(sun);
-        scene.add(
-          new THREE.DirectionalLight(0x38bdf8, 0.25)
-            .translateX(-3)
-            .translateY(4),
-        );
-        scene.add(
-          new THREE.DirectionalLight(0xf472b6, 0.15)
-            .translateZ(5)
-            .translateY(3),
-        );
-
-        // Ground
-        const gnd = new THREE.Mesh(
-          new THREE.PlaneGeometry(30, 30),
-          new THREE.MeshStandardMaterial({ color: 0x12151c, roughness: 0.9 }),
-        );
-        gnd.rotation.x = -Math.PI / 2;
-        gnd.receiveShadow = true;
-        scene.add(gnd);
-
-        gridHelper = new THREE.GridHelper(20, 40, 0x1a2540, 0x0d1220);
-        gridHelper.position.y = 0.002;
-        scene.add(gridHelper);
-
-        // Distance rings
-        for (let d = 1; d <= 7; d++) {
-          const inRange = d >= C.minDist && d <= C.maxDist;
-          const ring = new THREE.Mesh(
-            new THREE.RingGeometry(d - 0.015, d + 0.015, 64),
-            new THREE.MeshBasicMaterial({
-              color: inRange ? 0x38bdf8 : 0x1e293b,
-              transparent: true,
-              opacity: inRange ? 0.12 : 0.06,
-              side: THREE.DoubleSide,
-            }),
-          );
-          ring.rotation.x = -Math.PI / 2;
-          ring.position.y = 0.004;
-          scene.add(ring);
-        }
-
-        buildRobot();
-        buildHub();
-        buildOverlays();
-        setupOrbit();
-
-        addEventListener("resize", () => {
-          camera.aspect = innerWidth / innerHeight;
-          camera.updateProjectionMatrix();
-          renderer.setSize(innerWidth, innerHeight);
-        });
-        addEventListener("keydown", (e) => {
-          if (e.code === "Space") {
-            e.preventDefault();
-            fireBall();
-          }
-        });
-
-        // Bind sliders
-        ["s-dist", "s-turret", "s-eff", "s-apex", "s-bn", "s-bf"].forEach(
-          (id) => document.getElementById(id).addEventListener("input", update),
-        );
-
-        update();
-        animate();
-      }
-
-      // ── ROBOT ──
-      function buildRobot() {
-        robotGroup = new THREE.Group();
-        const cMat = new THREE.MeshStandardMaterial({
-          color: 0x2d3748,
-          roughness: 0.4,
-          metalness: 0.6,
-        });
-
-        // Chassis
-        const chassis = new THREE.Mesh(
-          new THREE.BoxGeometry(0.55, 0.11, 0.55),
-          cMat,
-        );
-        chassis.position.y = 0.14;
-        chassis.castShadow = true;
-        robotGroup.add(chassis);
-
-        // Bumpers
-        const bMat = new THREE.MeshStandardMaterial({
-          color: 0x3b82f6,
-          roughness: 0.5,
-        });
-        [
-          [0, 0.14, -0.3, 0.62, 0.09, 0.03],
-          [0, 0.14, 0.3, 0.62, 0.09, 0.03],
-          [-0.3, 0.14, 0, 0.03, 0.09, 0.62],
-          [0.3, 0.14, 0, 0.03, 0.09, 0.62],
-        ].forEach(([x, y, z, w, h, d]) => {
-          const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), bMat);
-          b.position.set(x, y, z);
-          robotGroup.add(b);
-        });
-
-        // Forward arrow
-        const arr = new THREE.Mesh(
-          new THREE.ConeGeometry(0.035, 0.09, 8),
-          new THREE.MeshBasicMaterial({ color: 0x4ade80 }),
-        );
-        arr.position.set(0.32, 0.2, 0);
-        arr.rotation.z = -Math.PI / 2;
-        robotGroup.add(arr);
-
-        // Wheels
-        const wMat = new THREE.MeshStandardMaterial({
-          color: 0x111827,
-          roughness: 0.3,
-          metalness: 0.8,
-        });
-        [
-          [-0.2, -0.2],
-          [0.2, -0.2],
-          [-0.2, 0.2],
-          [0.2, 0.2],
-        ].forEach(([x, z]) => {
-          const w = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.045, 0.045, 0.035, 12),
-            wMat,
-          );
-          w.position.set(x, 0.045, z);
-          w.rotation.x = Math.PI / 2;
-          robotGroup.add(w);
-        });
-
-        // Turret
-        turretGroup = new THREE.Group();
-        turretGroup.position.y = C.turretH;
-
-        const tBase = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.13, 0.16, 0.07, 20),
-          new THREE.MeshStandardMaterial({
-            color: 0x475569,
-            roughness: 0.3,
-            metalness: 0.7,
-          }),
-        );
-        turretGroup.add(tBase);
-
-        const barrel = new THREE.Mesh(
-          new THREE.BoxGeometry(0.22, 0.1, 0.12),
-          new THREE.MeshStandardMaterial({
-            color: 0x64748b,
-            roughness: 0.3,
-            metalness: 0.8,
-          }),
-        );
-        barrel.position.set(0.11, 0.05, 0);
-        turretGroup.add(barrel);
-
-        hoodGroup = new THREE.Group();
-        hoodGroup.position.set(0.2, 0.06, 0);
-
-        const hd = new THREE.Mesh(
-          new THREE.BoxGeometry(0.07, 0.12, 0.1),
-          new THREE.MeshStandardMaterial({
-            color: 0x94a3b8,
-            roughness: 0.3,
-            metalness: 0.5,
-          }),
-        );
-        hoodGroup.add(hd);
-
-        fwBot = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.048, 0.048, 0.1, 14),
-          new THREE.MeshStandardMaterial({
-            color: 0xf472b6,
-            roughness: 0.2,
-            metalness: 0.9,
-            emissive: 0xf472b6,
-            emissiveIntensity: 0.2,
-          }),
-        );
-        fwBot.rotation.x = Math.PI / 2;
-        fwBot.position.set(-0.035, -0.035, 0);
-        hoodGroup.add(fwBot);
-
-        fwTop = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.024, 0.024, 0.1, 14),
-          new THREE.MeshStandardMaterial({
-            color: 0xa78bfa,
-            roughness: 0.2,
-            metalness: 0.9,
-            emissive: 0xa78bfa,
-            emissiveIntensity: 0.2,
-          }),
-        );
-        fwTop.rotation.x = Math.PI / 2;
-        fwTop.position.set(-0.035, 0.035, 0);
-        hoodGroup.add(fwTop);
-
-        // Exit point glow
-        const exitGlow = new THREE.Mesh(
-          new THREE.SphereGeometry(0.018, 8, 8),
-          new THREE.MeshBasicMaterial({
-            color: 0xfbbf24,
-            transparent: true,
-            opacity: 0.8,
-          }),
-        );
-        exitGlow.position.set(0.04, 0, 0);
-        hoodGroup.add(exitGlow);
-
-        turretGroup.add(hoodGroup);
-        robotGroup.add(turretGroup);
-
-        // Turret glow ring
-        const gr = new THREE.Mesh(
-          new THREE.RingGeometry(0.14, 0.17, 28),
-          new THREE.MeshBasicMaterial({
-            color: 0x38bdf8,
-            transparent: true,
-            opacity: 0.12,
-            side: THREE.DoubleSide,
-          }),
-        );
-        gr.rotation.x = -Math.PI / 2;
-        gr.position.y = C.turretH - 0.03;
-        robotGroup.add(gr);
-
-        scene.add(robotGroup);
-      }
-
-      // ── HUB ──
-      function buildHub() {
-        hubGroup = new THREE.Group();
-
-        // Main cylinder
-        const cyl = new THREE.Mesh(
-          new THREE.CylinderGeometry(hubR, hubR + 0.04, 0.35, 32, 1, true),
-          new THREE.MeshStandardMaterial({
-            color: 0x38bdf8,
-            transparent: true,
-            opacity: 0.12,
-            side: THREE.DoubleSide,
-          }),
-        );
-        cyl.position.y = C.hubHeight;
-        hubGroup.add(cyl);
-
-        // Top rim (this is what the ball must clear!)
-        const rimGeo = new THREE.TorusGeometry(hubR, C.hubRimThickness, 8, 48);
-        const rimMat = new THREE.MeshStandardMaterial({
-          color: 0x38bdf8,
-          roughness: 0.3,
-          metalness: 0.8,
-          emissive: 0x38bdf8,
-          emissiveIntensity: 0.5,
-        });
-        const rimTop = new THREE.Mesh(rimGeo, rimMat);
-        rimTop.rotation.x = Math.PI / 2;
-        rimTop.position.y = C.hubHeight + 0.175;
-        hubGroup.add(rimTop);
-
-        // Bottom rim
-        const rimBot = new THREE.Mesh(rimGeo.clone(), rimMat.clone());
-        rimBot.rotation.x = Math.PI / 2;
-        rimBot.position.y = C.hubHeight - 0.175;
-        hubGroup.add(rimBot);
-
-        // Near and far edge markers (in the shooting plane)
-        const edgeMat = new THREE.MeshBasicMaterial({
-          color: 0xf87171,
-          transparent: true,
-          opacity: 0.6,
-        });
-        hubRimNear = new THREE.Mesh(
-          new THREE.SphereGeometry(0.04, 8, 8),
-          edgeMat,
-        );
-        hubRimNear.position.y = C.hubHeight + 0.175;
-        hubGroup.add(hubRimNear);
-
-        hubRimFar = new THREE.Mesh(
-          new THREE.SphereGeometry(0.04, 8, 8),
-          edgeMat.clone(),
-        );
-        hubRimFar.position.y = C.hubHeight + 0.175;
-        hubGroup.add(hubRimFar);
-
-        // Scoring zone disc (inside hub)
-        const disc = new THREE.Mesh(
-          new THREE.CircleGeometry(hubR - 0.06, 32),
-          new THREE.MeshBasicMaterial({
-            color: 0x4ade80,
-            transparent: true,
-            opacity: 0.06,
-            side: THREE.DoubleSide,
-          }),
-        );
-        disc.rotation.x = -Math.PI / 2;
-        disc.position.y = C.hubHeight;
-        hubGroup.add(disc);
-
-        // Support pole
-        const pole = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.035, 0.035, C.hubHeight - 0.2, 8),
-          new THREE.MeshStandardMaterial({
-            color: 0x1e293b,
-            roughness: 0.5,
-            metalness: 0.5,
-          }),
-        );
-        pole.position.y = (C.hubHeight - 0.2) / 2;
-        pole.castShadow = true;
-        hubGroup.add(pole);
-
-        // Height reference line
-        const hLine = new THREE.Line(
-          new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(0, 0, 0),
-            new THREE.Vector3(0, C.hubHeight + 0.2, 0),
-          ]),
-          new THREE.LineBasicMaterial({
-            color: 0x38bdf8,
-            transparent: true,
-            opacity: 0.08,
-          }),
-        );
-        hubGroup.add(hLine);
-
-        scene.add(hubGroup);
-      }
-
-      // ── TRAJECTORY & OVERLAY OBJECTS ──
-      function buildOverlays() {
-        const N = 120;
-        const pts = Array.from({ length: N }, () => new THREE.Vector3());
-
-        // Main arc
-        trajLine = new THREE.Line(
-          new THREE.BufferGeometry().setFromPoints(pts),
-          new THREE.LineBasicMaterial({
-            color: 0xf472b6,
-            transparent: true,
-            opacity: 0.85,
-          }),
-        );
-        scene.add(trajLine);
-
-        // Glow arc
-        trajGlow = new THREE.Line(
-          new THREE.BufferGeometry().setFromPoints(pts.map((p) => p.clone())),
-          new THREE.LineBasicMaterial({
-            color: 0xf472b6,
-            transparent: true,
-            opacity: 0.2,
-          }),
-        );
-        scene.add(trajGlow);
-
-        // Apex marker
-        apexMarker = new THREE.Mesh(
-          new THREE.SphereGeometry(0.04, 12, 12),
-          new THREE.MeshBasicMaterial({
-            color: 0xa78bfa,
-            transparent: true,
-            opacity: 0.9,
-          }),
-        );
-        scene.add(apexMarker);
-
-        // Apex vertical dashed line
-        const apexPts = [new THREE.Vector3(), new THREE.Vector3()];
-        apexLine = new THREE.Line(
-          new THREE.BufferGeometry().setFromPoints(apexPts),
-          new THREE.LineBasicMaterial({
-            color: 0xa78bfa,
-            transparent: true,
-            opacity: 0.25,
-          }),
-        );
-        scene.add(apexLine);
-
-        // Clearance dots at rim edges (shows where ball crosses hub rim plane)
-        clearNearDot = new THREE.Mesh(
-          new THREE.SphereGeometry(0.035, 8, 8),
-          new THREE.MeshBasicMaterial({ color: 0x4ade80 }),
-        );
-        scene.add(clearNearDot);
-
-        clearFarDot = new THREE.Mesh(
-          new THREE.SphereGeometry(0.035, 8, 8),
-          new THREE.MeshBasicMaterial({ color: 0x4ade80 }),
-        );
-        scene.add(clearFarDot);
-
-        // Clearance vertical lines (ball height at rim edge → hub rim)
-        clearNearLine = new THREE.Line(
-          new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(),
-            new THREE.Vector3(),
-          ]),
-          new THREE.LineBasicMaterial({
-            color: 0x4ade80,
-            transparent: true,
-            opacity: 0.4,
-          }),
-        );
-        scene.add(clearNearLine);
-
-        clearFarLine = new THREE.Line(
-          new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(),
-            new THREE.Vector3(),
-          ]),
-          new THREE.LineBasicMaterial({
-            color: 0x4ade80,
-            transparent: true,
-            opacity: 0.4,
-          }),
-        );
-        scene.add(clearFarLine);
-
-        // Side-view guide: hub height horizontal reference
-        sideGuide = new THREE.Line(
-          new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(-1, C.hubHeight, 0),
-            new THREE.Vector3(8, C.hubHeight, 0),
-          ]),
-          new THREE.LineBasicMaterial({
-            color: 0x38bdf8,
-            transparent: true,
-            opacity: 0.08,
-          }),
-        );
-        scene.add(sideGuide);
-      }
-
-      function updateOverlays(shot, dist, tRad) {
-        const N = 120;
-        const pos = trajLine.geometry.attributes.position.array;
-        const gpos = trajGlow.geometry.attributes.position.array;
-
-        // Generate full trajectory from exit to well past hub
-        const tEnd = shot.tof * 1.15;
-        let lastValid = 0;
-        for (let i = 0; i < N; i++) {
-          const t = (i / (N - 1)) * tEnd;
-          const x = shot.vx * t;
-          const y = C.exitH + shot.vy0 * t - 0.5 * C.g * t * t;
-          const idx = i * 3;
-
-          if (y < -0.2) {
-            // Below ground — collapse to last valid
-            pos[idx] = pos[lastValid * 3];
-            pos[idx + 1] = pos[lastValid * 3 + 1];
-            pos[idx + 2] = pos[lastValid * 3 + 2];
-            gpos[idx] = pos[idx];
-            gpos[idx + 1] = pos[idx + 1];
-            gpos[idx + 2] = pos[idx + 2];
-          } else {
-            const px = x * Math.cos(tRad);
-            const pz = -x * Math.sin(tRad);
-            pos[idx] = px;
-            pos[idx + 1] = y;
-            pos[idx + 2] = pz;
-            gpos[idx] = px;
-            gpos[idx + 1] = y;
-            gpos[idx + 2] = pz;
-            lastValid = i;
-          }
-        }
-        trajLine.geometry.attributes.position.needsUpdate = true;
-        trajGlow.geometry.attributes.position.needsUpdate = true;
-        trajLine.visible = showTraj;
-        trajGlow.visible = showTraj;
-
-        // Apex marker
-        const apexX = shot.xApex;
-        const apexY = shot.apexH;
-        apexMarker.position.set(
-          apexX * Math.cos(tRad),
-          apexY,
-          -apexX * Math.sin(tRad),
-        );
-        apexMarker.visible = showApexM;
-
-        // Apex line (vertical from ground to apex)
-        const alPos = apexLine.geometry.attributes.position.array;
-        alPos[0] = apexX * Math.cos(tRad);
-        alPos[1] = 0;
-        alPos[2] = -apexX * Math.sin(tRad);
-        alPos[3] = apexX * Math.cos(tRad);
-        alPos[4] = apexY;
-        alPos[5] = -apexX * Math.sin(tRad);
-        apexLine.geometry.attributes.position.needsUpdate = true;
-        apexLine.visible = showApexM;
-
-        // Edge clearance markers
-        const nearX = shot.nearEdgeX;
-        const farX = shot.farEdgeX;
-        const nearH = shot.hNearEdge;
-        const farH = shot.hFarEdge;
-        const hubTop = C.hubHeight + 0.175;
-
-        // Position rim edge markers on hub
-        hubRimNear.position.set(-hubR, C.hubHeight + 0.175, 0);
-        hubRimFar.position.set(hubR, C.hubHeight + 0.175, 0);
-
-        // Near edge clearance dot (ball position at near rim edge)
-        clearNearDot.position.set(
-          nearX * Math.cos(tRad),
-          nearH,
-          -nearX * Math.sin(tRad),
-        );
-        const nearClears = nearH - hubTop - C.ballR > 0;
-        clearNearDot.material.color.setHex(nearClears ? 0x4ade80 : 0xf87171);
-        clearNearDot.visible = showClear;
-
-        // Far edge clearance dot
-        clearFarDot.position.set(
-          farX * Math.cos(tRad),
-          farH,
-          -farX * Math.sin(tRad),
-        );
-        const farClears = farH - hubTop - C.ballR > 0;
-        clearFarDot.material.color.setHex(farClears ? 0x4ade80 : 0xf87171);
-        clearFarDot.visible = showClear;
-
-        // Clearance vertical lines (from ball at edge → hub rim height)
-        const cnPos = clearNearLine.geometry.attributes.position.array;
-        cnPos[0] = nearX * Math.cos(tRad);
-        cnPos[1] = hubTop;
-        cnPos[2] = -nearX * Math.sin(tRad);
-        cnPos[3] = nearX * Math.cos(tRad);
-        cnPos[4] = nearH;
-        cnPos[5] = -nearX * Math.sin(tRad);
-        clearNearLine.geometry.attributes.position.needsUpdate = true;
-        clearNearLine.material.color.setHex(nearClears ? 0x4ade80 : 0xf87171);
-        clearNearLine.visible = showClear;
-
-        const cfPos = clearFarLine.geometry.attributes.position.array;
-        cfPos[0] = farX * Math.cos(tRad);
-        cfPos[1] = hubTop;
-        cfPos[2] = -farX * Math.sin(tRad);
-        cfPos[3] = farX * Math.cos(tRad);
-        cfPos[4] = farH;
-        cfPos[5] = -farX * Math.sin(tRad);
-        clearFarLine.geometry.attributes.position.needsUpdate = true;
-        clearFarLine.material.color.setHex(farClears ? 0x4ade80 : 0xf87171);
-        clearFarLine.visible = showClear;
-
-        // Side guide
-        const sgPos = sideGuide.geometry.attributes.position.array;
-        sgPos[0] = -0.5 * Math.cos(tRad);
-        sgPos[2] = 0.5 * Math.sin(tRad);
-        sgPos[3] = (dist + 1.5) * Math.cos(tRad);
-        sgPos[5] = -(dist + 1.5) * Math.sin(tRad);
-        sideGuide.geometry.attributes.position.needsUpdate = true;
-        sideGuide.visible = showSide;
-      }
-
-      // ── ORBIT CAMERA ──
-      let drag = false,
-        pMouse = { x: 0, y: 0 };
-      let orbit = { theta: 0.8, phi: 0.65 };
-      let oRadius = 7,
-        oTarget = new THREE.Vector3(1.5, 1.4, 0);
-
-      function setupOrbit() {
-        const el = renderer.domElement;
-        el.addEventListener("mousedown", (e) => {
-          drag = true;
-          pMouse = { x: e.clientX, y: e.clientY };
-        });
-        el.addEventListener("mousemove", (e) => {
-          if (!drag) return;
-          orbit.theta -= (e.clientX - pMouse.x) * 0.005;
-          orbit.phi = Math.max(
-            0.08,
-            Math.min(1.5, orbit.phi - (e.clientY - pMouse.y) * 0.005),
-          );
-          pMouse = { x: e.clientX, y: e.clientY };
-        });
-        el.addEventListener("mouseup", () => (drag = false));
-        el.addEventListener("mouseleave", () => (drag = false));
-        el.addEventListener("wheel", (e) => {
-          oRadius = Math.max(2.5, Math.min(16, oRadius + e.deltaY * 0.005));
-        });
-        // Touch
-        el.addEventListener("touchstart", (e) => {
-          if (e.touches.length === 1) {
-            drag = true;
-            pMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-          }
-        });
-        el.addEventListener("touchmove", (e) => {
-          if (!drag || e.touches.length !== 1) return;
-          orbit.theta -= (e.touches[0].clientX - pMouse.x) * 0.005;
-          orbit.phi = Math.max(
-            0.08,
-            Math.min(
-              1.5,
-              orbit.phi - (e.touches[0].clientY - pMouse.y) * 0.005,
-            ),
-          );
-          pMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-        });
-        el.addEventListener("touchend", () => (drag = false));
-      }
-
-      function updateCam() {
-        if (autoRot && !drag) orbit.theta += 0.002;
-        camera.position.set(
-          oTarget.x + oRadius * Math.sin(orbit.phi) * Math.cos(orbit.theta),
-          oTarget.y + oRadius * Math.cos(orbit.phi),
-          oTarget.z + oRadius * Math.sin(orbit.phi) * Math.sin(orbit.theta),
-        );
-        camera.lookAt(oTarget);
-      }
-
-      // ── BALL FIRING ──
-      function fireBall() {
-        const dist = parseFloat(document.getElementById("s-dist").value);
-        const tDeg = parseFloat(document.getElementById("s-turret").value);
-        const tRad = (tDeg * Math.PI) / 180;
-        const shot = computeShot(dist);
-
-        const ballGeo = new THREE.SphereGeometry(C.ballR, 16, 16);
-        const ballMat = new THREE.MeshStandardMaterial({
-          color: 0xfbbf24,
-          roughness: 0.5,
-          metalness: 0.2,
-          emissive: 0xfbbf24,
-          emissiveIntensity: 0.4,
-        });
-        const ball = new THREE.Mesh(ballGeo, ballMat);
-        ball.castShadow = true;
-        scene.add(ball);
-
-        // Trail
-        const trailGeo = new THREE.BufferGeometry();
-        const trailArr = new Float32Array(90 * 3);
-        trailGeo.setAttribute(
-          "position",
-          new THREE.BufferAttribute(trailArr, 3),
-        );
-        const trail = new THREE.Points(
-          trailGeo,
-          new THREE.PointsMaterial({
-            color: 0xfbbf24,
-            size: 0.025,
-            transparent: true,
-            opacity: 0.5,
-          }),
-        );
-        scene.add(trail);
-
-        balls.push({
-          mesh: ball,
-          trail,
-          trailBuf: [],
-          vx: shot.vx,
-          vy0: shot.vy0,
-          tRad,
-          t0: clock.getElapsedTime(),
-          dist,
-          shot,
-          scored: false,
-          alive: true,
-        });
-      }
-
-      function updateBalls(now) {
-        balls.forEach((b) => {
-          if (!b.alive) return;
-          const t = now - b.t0;
-          const x = b.vx * t;
-          const y = C.exitH + b.vy0 * t - 0.5 * C.g * t * t;
-
-          if (y < -0.5 || t > 6) {
-            b.alive = false;
-            scene.remove(b.mesh);
-            scene.remove(b.trail);
-            return;
-          }
-
-          const px = x * Math.cos(b.tRad);
-          const pz = -x * Math.sin(b.tRad);
-          b.mesh.position.set(px, y, pz);
-
-          // Trail
-          b.trailBuf.push(px, y, pz);
-          if (b.trailBuf.length > 90 * 3) b.trailBuf.splice(0, 3);
-          const arr = b.trail.geometry.attributes.position.array;
-          for (let i = 0; i < 90 * 3; i++)
-            arr[i] =
-              i < b.trailBuf.length
-                ? b.trailBuf[i]
-                : arr[Math.max(0, b.trailBuf.length - 3 + (i % 3))];
-          b.trail.geometry.attributes.position.needsUpdate = true;
-
-          // Score detection: ball descends through hub plane near hub center
-          if (!b.scored && b.vy0 - C.g * t < 0) {
-            // descending
-            const hDist = Math.sqrt(px * px + pz * pz); // distance from origin
-            const hubCenter = b.dist;
-            const lateralError = Math.abs(hDist - hubCenter);
-            if (
-              Math.abs(y - C.hubHeight) < 0.15 &&
-              lateralError < hubR - C.ballR &&
-              b.shot.scores
-            ) {
-              b.scored = true;
-              showScorePopup(true);
-              // Flash hub green
-              hubGroup.children.forEach((c) => {
-                if (c.material && c.material.emissive) {
-                  const orig = c.material.emissiveIntensity;
-                  c.material.emissiveIntensity = 2.0;
-                  setTimeout(() => (c.material.emissiveIntensity = orig), 400);
-                }
-              });
-            }
-          }
-
-          // Miss detection: ball has gone well past hub and below hub height
-          if (!b.scored && y < C.hubHeight - 1.0 && x > b.dist + 1.0) {
-            b.scored = true; // mark so we don't spam
-            showScorePopup(false);
-          }
-        });
-        balls = balls.filter((b) => b.alive);
-      }
-
-      function showScorePopup(scored) {
-        const el = document.getElementById("score-popup");
-        el.textContent = scored ? "SCORE!" : "MISS";
-        el.className = "score-popup show" + (scored ? "" : " miss");
-        setTimeout(() => (el.className = "score-popup"), 1200);
-      }
-
-      // ── UPDATE ──
-      function update() {
-        const dist = parseFloat(document.getElementById("s-dist").value);
-        const tDeg = parseFloat(document.getElementById("s-turret").value);
-        const tRad = (tDeg * Math.PI) / 180;
-        eff = parseFloat(document.getElementById("s-eff").value);
-        apexClear = parseFloat(document.getElementById("s-apex").value);
-        biasNear = parseFloat(document.getElementById("s-bn").value);
-        biasFar = parseFloat(document.getElementById("s-bf").value);
-
-        // UI values
-        document.getElementById("v-dist").textContent = dist.toFixed(1) + " m";
-        document.getElementById("v-turret").textContent = tDeg + "°";
-        document.getElementById("v-eff").textContent = eff.toFixed(2);
-        document.getElementById("v-apex").textContent =
-          apexClear.toFixed(2) + " m";
-        document.getElementById("v-bn").textContent = biasNear.toFixed(2);
-        document.getElementById("v-bf").textContent = biasFar.toFixed(2);
-
-        const shot = computeShot(dist);
-
-        // Telemetry
-        document.getElementById("t-fw").textContent =
-          shot.rps.toFixed(1) + " RPS";
-        document.getElementById("t-hood").textContent =
-          shot.hoodAng.toFixed(1) + "°";
-        document.getElementById("t-ea").textContent =
-          shot.exitDeg.toFixed(1) + "°";
-        document.getElementById("t-ev").textContent =
-          shot.exitV.toFixed(1) + " m/s";
-        document.getElementById("t-ss").textContent =
-          shot.surfSpeed.toFixed(1) + " m/s";
-        document.getElementById("t-ah").textContent =
-          shot.apexH.toFixed(2) + " m";
-
-        const acEl = document.getElementById("t-ac");
-        acEl.textContent =
-          (shot.apexAboveHub >= 0 ? "+" : "") +
-          shot.apexAboveHub.toFixed(2) +
-          " m";
-        acEl.className =
-          "t-val " +
-          (shot.apexAboveHub >= apexClear
-            ? "good"
-            : shot.apexAboveHub >= 0
-              ? "warn"
-              : "bad");
-
-        const daEl = document.getElementById("t-da");
-        daEl.textContent = shot.descDeg.toFixed(1) + "°";
-        daEl.className =
-          "t-val " +
-          (shot.descDeg > 50
-            ? "good"
-            : shot.descDeg > 40
-              ? ""
-              : shot.descDeg > 30
-                ? "warn"
-                : "bad");
-
-        document.getElementById("t-tof").textContent =
-          shot.tof.toFixed(3) + " s";
-        document.getElementById("t-em").textContent =
-          (shot.entryMargin * 100).toFixed(1) + " cm";
-
-        const rcEl = document.getElementById("t-rc");
-        rcEl.textContent = (shot.minRimClear * 100).toFixed(1) + " cm";
-        rcEl.className =
-          "t-val " +
-          (shot.minRimClear > 0.05
-            ? "good"
-            : shot.minRimClear > 0
-              ? "warn"
-              : "bad");
-
-        const scEl = document.getElementById("t-score");
-        scEl.textContent = shot.scores ? "YES ✓" : "NO ✗";
-        scEl.className = "t-val " + (shot.scores ? "good" : "bad");
-
-        // Bottom bar
-        document.getElementById("b-dist").textContent = dist.toFixed(1);
-        document.getElementById("b-apex").textContent = shot.apexH.toFixed(2);
-        document.getElementById("b-desc").textContent = shot.descDeg.toFixed(0);
-        document.getElementById("b-clear").textContent = (
-          shot.minRimClear * 100
-        ).toFixed(0);
-        const bClearEl = document.getElementById("b-clear");
-        bClearEl.className =
-          "v " +
-          (shot.minRimClear > 0.05 ? "g" : shot.minRimClear > 0 ? "y" : "bad");
-
-        const readyEl = document.getElementById("b-ready");
-        const inRange = dist >= C.minDist && dist <= C.maxDist;
-        if (shot.scores && inRange) {
-          readyEl.textContent = "● READY TO FIRE";
-          readyEl.className = "ready-pill ok";
-        } else {
-          readyEl.textContent =
-            "● " +
-            (!inRange
-              ? "OUT OF RANGE"
-              : shot.minRimClear <= 0
-                ? "CLIPS RIM"
-                : shot.apexAboveHub < 0
-                  ? "ARC TOO LOW"
-                  : "NOT READY");
-          readyEl.className = "ready-pill no";
-        }
-
-        // 3D updates
-        turretGroup.rotation.y = tRad;
-        hoodGroup.rotation.z = shot.exitRad - 0.3;
-
-        hubGroup.position.set(dist * Math.cos(tRad), 0, -dist * Math.sin(tRad));
-        hubGroup.rotation.y = tRad; // face the robot
-
-        updateOverlays(shot, dist, tRad);
-
-        oTarget.set(
-          dist * 0.4 * Math.cos(tRad),
-          1.4,
-          -dist * 0.4 * Math.sin(tRad),
-        );
-      }
-
-      // ── TOGGLES ──
-      function tog(id) {
-        const el = document.getElementById("tg-" + id);
-        const isOn = el.classList.toggle("on");
-        if (id === "traj") showTraj = isOn;
-        if (id === "apexm") showApexM = isOn;
-        if (id === "clear") showClear = isOn;
-        if (id === "side") showSide = isOn;
-        if (id === "rot") autoRot = isOn;
-        update();
-      }
-
-      // ── ANIMATE ──
-      function animate() {
-        requestAnimationFrame(animate);
-        const now = clock.getElapsedTime();
-
-        updateCam();
-        updateBalls(now);
-
-        // Spin flywheels
-        const shot = computeShot(
-          parseFloat(document.getElementById("s-dist").value),
-        );
-        const spd = shot.rps * 0.015;
-        if (fwBot) fwBot.rotation.y += spd;
-        if (fwTop) fwTop.rotation.y += spd * 2;
-
-        // Pulse apex marker
-        if (apexMarker.visible) {
-          apexMarker.material.opacity = 0.6 + 0.3 * Math.sin(now * 3);
-        }
-
-        renderer.render(scene, camera);
-      }
-
-      init();
-    </script>
-  </body>
+    }
+
+    if (prevY >= hubBottomY && b.y < hubBottomY && b.wasAboveRim) {
+        b.resolved = true;
+        if (radCenter < C.hubInnerR) { scores++; showPopup(true); flashHub(true); } 
+        else { misses++; showPopup(false); flashHub(false); }
+    }
+    
+    if (!b.resolved && b.vy < 0 && b.y < hubBottomY && !b.wasAboveRim) {
+         b.resolved = true; misses++; showPopup(false); flashHub(false);
+    }
+  });
+
+  balls = balls.filter(b => b.alive);
+  updateScoreBoard();
+}
+
+// ═══════════════════════════════════════
+// THREE.JS SETUP & MODELS
+// ═══════════════════════════════════════
+let scene, camera, renderer, clock;
+let robotGroup, turretGroup, hoodGroup, fwBot, fwTop;
+let hubGroup, hubGlowRing;
+let trajLine, trajGlow, apexMarker, apexLine;
+let clearNearDot, clearFarDot, clearNearLine, clearFarLine;
+let hubHeightLine, gridHelper;
+
+function init() {
+  scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x07090d, 0.025);
+  camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 100);
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.1;
+  document.body.appendChild(renderer.domElement);
+  clock = new THREE.Clock();
+
+  scene.add(new THREE.AmbientLight(0x334466, 0.5));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.7);
+  sun.position.set(5, 12, 5); sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  scene.add(sun);
+  scene.add(new THREE.DirectionalLight(0x38bdf8, 0.2).translateX(-3).translateY(4));
+  scene.add(new THREE.DirectionalLight(0xf472b6, 0.15).translateZ(5).translateY(3));
+
+  const gnd = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshStandardMaterial({ color: 0x12151c, roughness: 0.9 }));
+  gnd.rotation.x = -Math.PI / 2; gnd.receiveShadow = true; scene.add(gnd);
+  gridHelper = new THREE.GridHelper(20, 40, 0x1a2540, 0x0d1220);
+  gridHelper.position.y = 0.002; scene.add(gridHelper);
+
+  for (let d = 1; d <= 7; d++) {
+    const ok = d >= C.minDist && d <= C.maxDist;
+    const ring = new THREE.Mesh(new THREE.RingGeometry(d - 0.015, d + 0.015, 64),
+      new THREE.MeshBasicMaterial({ color: ok ? 0x38bdf8 : 0x1e293b, transparent: true, opacity: ok ? 0.12 : 0.05, side: THREE.DoubleSide }));
+    ring.rotation.x = -Math.PI / 2; ring.position.y = 0.004; scene.add(ring);
+  }
+
+  buildRobot(); buildHub(); buildOverlays(); setupOrbit();
+
+  addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+  
+  ['s-eff','s-apex','s-bn','s-bf'].forEach(id => document.getElementById(id).addEventListener('input', updateUI));
+  updateUI(); animate();
+}
+
+function buildRobot() {
+  robotGroup = new THREE.Group();
+  const cm = new THREE.MeshStandardMaterial({ color: 0x2d3748, roughness: 0.4, metalness: 0.6 });
+  const ch = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.11, 0.55), cm);
+  ch.position.y = 0.14; ch.castShadow = true; robotGroup.add(ch);
+  const bm = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.5 });
+  [[0,.14,-.3,.62,.09,.03],[0,.14,.3,.62,.09,.03],[-.3,.14,0,.03,.09,.62],[.3,.14,0,.03,.09,.62]].forEach(([x,y,z,w,h,d])=>{
+    const b = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), bm); b.position.set(x,y,z); robotGroup.add(b);
+  });
+  const ar = new THREE.Mesh(new THREE.ConeGeometry(.035,.09,8), new THREE.MeshBasicMaterial({color:0x4ade80}));
+  ar.position.set(.32,.2,0); ar.rotation.z = -Math.PI/2; robotGroup.add(ar);
+  const wm = new THREE.MeshStandardMaterial({color:0x111827,roughness:.3,metalness:.8});
+  [[-.2,-.2],[.2,-.2],[-.2,.2],[.2,.2]].forEach(([x,z])=>{
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,.035,12),wm);
+    w.position.set(x,.045,z); w.rotation.x=Math.PI/2; robotGroup.add(w);
+  });
+
+  turretGroup = new THREE.Group(); turretGroup.position.y = C.turretH;
+  turretGroup.add(new THREE.Mesh(new THREE.CylinderGeometry(.13,.16,.07,20),
+    new THREE.MeshStandardMaterial({color:0x475569,roughness:.3,metalness:.7})));
+  const bl = new THREE.Mesh(new THREE.BoxGeometry(.22,.10,.12),
+    new THREE.MeshStandardMaterial({color:0x64748b,roughness:.3,metalness:.8}));
+  bl.position.set(.11,.05,0); turretGroup.add(bl);
+  hoodGroup = new THREE.Group(); hoodGroup.position.set(.20,.06,0);
+  hoodGroup.add(new THREE.Mesh(new THREE.BoxGeometry(.07,.12,.10),
+    new THREE.MeshStandardMaterial({color:0x94a3b8,roughness:.3,metalness:.5})));
+  fwBot = new THREE.Mesh(new THREE.CylinderGeometry(.048,.048,.10,14),
+    new THREE.MeshStandardMaterial({color:0xf472b6,roughness:.2,metalness:.9,emissive:0xf472b6,emissiveIntensity:.2}));
+  fwBot.rotation.x=Math.PI/2; fwBot.position.set(-.035,-.035,0); hoodGroup.add(fwBot);
+  fwTop = new THREE.Mesh(new THREE.CylinderGeometry(.024,.024,.10,14),
+    new THREE.MeshStandardMaterial({color:0xa78bfa,roughness:.2,metalness:.9,emissive:0xa78bfa,emissiveIntensity:.2}));
+  fwTop.rotation.x=Math.PI/2; fwTop.position.set(-.035,.035,0); hoodGroup.add(fwTop);
+  const eg = new THREE.Mesh(new THREE.SphereGeometry(.018,8,8),
+    new THREE.MeshBasicMaterial({color:0xfbbf24,transparent:true,opacity:.8}));
+  eg.position.x=.04; hoodGroup.add(eg);
+  turretGroup.add(hoodGroup); robotGroup.add(turretGroup);
+  scene.add(robotGroup);
+}
+
+// NOTE: Add missing 'THREE.' to MeshStandardMaterial above just in case
+function buildRobotSafe() {
+  robotGroup = new THREE.Group();
+  const cm = new THREE.MeshStandardMaterial({ color: 0x2d3748, roughness: 0.4, metalness: 0.6 });
+  const ch = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.11, 0.55), cm);
+  ch.position.y = 0.14; ch.castShadow = true; robotGroup.add(ch);
+  const bm = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.5 });
+  [[0,.14,-.3,.62,.09,.03],[0,.14,.3,.62,.09,.03],[-.3,.14,0,.03,.09,.62],[.3,.14,0,.03,.09,.62]].forEach(([x,y,z,w,h,d])=>{
+    const b = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), bm); b.position.set(x,y,z); robotGroup.add(b);
+  });
+  const ar = new THREE.Mesh(new THREE.ConeGeometry(.035,.09,8), new THREE.MeshBasicMaterial({color:0x4ade80}));
+  ar.position.set(.32,.2,0); ar.rotation.z = -Math.PI/2; robotGroup.add(ar);
+  const wm = new THREE.MeshStandardMaterial({color:0x111827,roughness:.3,metalness:.8});
+  [[-.2,-.2],[.2,-.2],[-.2,.2],[.2,.2]].forEach(([x,z])=>{
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,.035,12),wm);
+    w.position.set(x,.045,z); w.rotation.x=Math.PI/2; robotGroup.add(w);
+  });
+
+  turretGroup = new THREE.Group(); turretGroup.position.y = C.turretH;
+  turretGroup.add(new THREE.Mesh(new THREE.CylinderGeometry(.13,.16,.07,20),
+    new THREE.MeshStandardMaterial({color:0x475569,roughness:.3,metalness:.7})));
+  const bl = new THREE.Mesh(new THREE.BoxGeometry(.22,.10,.12),
+    new THREE.MeshStandardMaterial({color:0x64748b,roughness:.3,metalness:.8}));
+  bl.position.set(.11,.05,0); turretGroup.add(bl);
+  hoodGroup = new THREE.Group(); hoodGroup.position.set(.20,.06,0);
+  hoodGroup.add(new THREE.Mesh(new THREE.BoxGeometry(.07,.12,.10),
+    new THREE.MeshStandardMaterial({color:0x94a3b8,roughness:.3,metalness:.5})));
+  fwBot = new THREE.Mesh(new THREE.CylinderGeometry(.048,.048,.10,14),
+    new THREE.MeshStandardMaterial({color:0xf472b6,roughness:.2,metalness:.9,emissive:0xf472b6,emissiveIntensity:.2}));
+  fwBot.rotation.x=Math.PI/2; fwBot.position.set(-.035,-.035,0); hoodGroup.add(fwBot);
+  fwTop = new THREE.Mesh(new THREE.CylinderGeometry(.024,.024,.10,14),
+    new THREE.MeshStandardMaterial({color:0xa78bfa,roughness:.2,metalness:.9,emissive:0xa78bfa,emissiveIntensity:.2}));
+  fwTop.rotation.x=Math.PI/2; fwTop.position.set(-.035,.035,0); hoodGroup.add(fwTop);
+  const eg = new THREE.Mesh(new THREE.SphereGeometry(.018,8,8),
+    new THREE.MeshBasicMaterial({color:0xfbbf24,transparent:true,opacity:.8}));
+  eg.position.x=.04; hoodGroup.add(eg);
+  turretGroup.add(hoodGroup); robotGroup.add(turretGroup);
+  scene.add(robotGroup);
+}
+// Override with the definitely safe one
+buildRobot = buildRobotSafe;
+
+function buildHub() {
+  hubGroup = new THREE.Group();
+  
+  const woodMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.8, metalness: 0.1 });
+  const polyMat = new THREE.MeshPhysicalMaterial({ color: 0xaaccff, metalness: 0.1, roughness: 0.1, transmission: 0.6, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
+  const tapeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const tagPlateMat = new THREE.MeshStandardMaterial({ color: 0xd2b48c, roughness: 0.9 }); 
+
+  const baseW = 1.17, baseH = 1.42, legThick = 0.089, legWide = 0.038; 
+  const legGeo = new THREE.BoxGeometry(legWide, baseH, legThick);
+  [{x: baseW/2 - legWide/2, z: baseW/2 - legThick/2}, {x: -baseW/2 + legWide/2, z: baseW/2 - legThick/2}, {x: baseW/2 - legWide/2, z: -baseW/2 + legThick/2}, {x: -baseW/2 + legWide/2, z: -baseW/2 + legThick/2}].forEach(pos => {
+    const leg = new THREE.Mesh(legGeo, woodMat); leg.position.set(pos.x, baseH/2, pos.z); leg.castShadow = true; hubGroup.add(leg);
+  });
+
+  const beamGeo = new THREE.BoxGeometry(legWide, 0.089, 1.09); 
+  [0.1, baseH - 0.05].forEach(y => {
+    const b1 = new THREE.Mesh(beamGeo, woodMat); b1.position.set(baseW/2 - legWide/2, y, 0); hubGroup.add(b1);
+    const b2 = b1.clone(); b2.position.set(-baseW/2 + legWide/2, y, 0); hubGroup.add(b2);
+    const b3 = new THREE.Mesh(beamGeo, woodMat); b3.rotation.y = Math.PI/2; b3.position.set(0, y, baseW/2 - legThick/2); hubGroup.add(b3);
+    const b4 = b3.clone(); b4.position.set(0, y, -baseW/2 + legThick/2); hubGroup.add(b4);
+  });
+
+  const deckShape = new THREE.Shape();
+  deckShape.moveTo(-baseW/2, -baseW/2); deckShape.lineTo(baseW/2, -baseW/2); deckShape.lineTo(baseW/2, baseW/2); deckShape.lineTo(-baseW/2, baseW/2); deckShape.lineTo(-baseW/2, -baseW/2);
+  const hexHole = new THREE.Path();
+  for (let i = 0; i < 6; i++) {
+    const ang = (i / 6) * Math.PI * 2, x = Math.cos(ang) * C.hubInnerR, z = Math.sin(ang) * C.hubInnerR;
+    if (i === 0) hexHole.moveTo(x, z); else hexHole.lineTo(x, z);
+  }
+  hexHole.closePath(); deckShape.holes.push(hexHole);
+  const deck = new THREE.Mesh(new THREE.ExtrudeGeometry(deckShape, { depth: 0.012, bevelEnabled: false }), woodMat);
+  deck.rotation.x = Math.PI / 2; deck.position.y = baseH; hubGroup.add(deck);
+
+  const funH = C.hubDepth;
+  const funnelGeo = new THREE.CylinderGeometry(C.hubOuterR, C.hubInnerR, funH, 6, 1, true);
+  const funnel = new THREE.Mesh(funnelGeo, polyMat); funnel.position.y = baseH + funH/2; funnel.rotation.y = Math.PI/6; hubGroup.add(funnel);
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(funnelGeo), new THREE.LineBasicMaterial({ color: 0x111111 }));
+  edges.position.y = baseH + funH/2; edges.rotation.y = Math.PI/6; hubGroup.add(edges);
+
+  const plateGeo = new THREE.BoxGeometry(1.17, 0.266, 0.012);
+  [{pos: [0, 1.25, baseW/2 + 0.01], rot: 0}, {pos: [0, 1.25, -baseW/2 - 0.01], rot: Math.PI}, {pos: [baseW/2 + 0.01, 1.25, 0], rot: Math.PI/2}, {pos: [-baseW/2 - 0.01, 1.25, 0], rot: -Math.PI/2}].forEach((cfg) => {
+    const p = new THREE.Mesh(plateGeo, tagPlateMat); p.position.set(...cfg.pos); p.rotation.y = cfg.rot; hubGroup.add(p);
+    const tagBg = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.22), tapeMat); tagBg.position.set(0.15, 0, 0.01); p.add(tagBg);
+    const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 0.16), new THREE.MeshBasicMaterial({ color: 0x000000 })); tag.position.z = 0.001; tagBg.add(tag);
+  });
+
+  hubGlowRing = new THREE.Mesh(new THREE.RingGeometry(C.hubInnerR-0.02, C.hubInnerR+0.02, 6), new THREE.MeshBasicMaterial({color:0x38bdf8, transparent:true, opacity:0.15, side:THREE.DoubleSide}));
+  hubGlowRing.rotation.x = -Math.PI/2; hubGlowRing.position.y = C.hubRimHeight + 0.01; hubGroup.add(hubGlowRing);
+  
+  hubGroup.position.set(0, 0, 0); 
+  scene.add(hubGroup);
+}
+
+function buildOverlays() {
+  const N=140, pts=Array.from({length:N},()=>new THREE.Vector3());
+  trajLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:0xf472b6,transparent:true,opacity:.85})); scene.add(trajLine);
+  trajGlow = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts.map(p=>p.clone())), new THREE.LineBasicMaterial({color:0xf472b6,transparent:true,opacity:.2})); scene.add(trajGlow);
+
+  apexMarker = new THREE.Mesh(new THREE.SphereGeometry(.045,12,12), new THREE.MeshBasicMaterial({color:0xa78bfa,transparent:true,opacity:.9})); scene.add(apexMarker);
+  apexLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]), new THREE.LineBasicMaterial({color:0xa78bfa,transparent:true,opacity:.2})); scene.add(apexLine);
+
+  clearNearDot = new THREE.Mesh(new THREE.SphereGeometry(.03,8,8),new THREE.MeshBasicMaterial({color:0x4ade80}));
+  clearFarDot = new THREE.Mesh(new THREE.SphereGeometry(.03,8,8),new THREE.MeshBasicMaterial({color:0x4ade80}));
+  scene.add(clearNearDot); scene.add(clearFarDot);
+  clearNearLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]), new THREE.LineBasicMaterial({color:0x4ade80,transparent:true,opacity:.5}));
+  clearFarLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]), new THREE.LineBasicMaterial({color:0x4ade80,transparent:true,opacity:.5}));
+  scene.add(clearNearLine); scene.add(clearFarLine);
+  hubHeightLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]), new THREE.LineBasicMaterial({color:0x38bdf8,transparent:true,opacity:.1})); scene.add(hubHeightLine);
+}
+
+function updOvl(shot, dist, abs_tRad) {
+  const N=140;
+  const p = trajLine.geometry.attributes.position.array;
+  const gp = trajGlow.geometry.attributes.position.array;
+  const tEnd = shot.tof * 1.3; 
+  let li = 0;
+  
+  for(let i=0; i<N; i++){
+    const t = (i/(N-1))*tEnd;
+    const rel_x = shot.vx * t;
+    const y = C.exitH + shot.vy0 * t - 0.5 * C.g * t * t;
+    const idx = i*3;
+    if(y < -0.1){
+      p[idx]=p[li*3]; p[idx+1]=p[li*3+1]; p[idx+2]=p[li*3+2];
+      gp[idx]=p[idx]; gp[idx+1]=p[idx+1]; gp[idx+2]=p[idx+2];
+    } else {
+      const px = rx + rel_x * Math.cos(abs_tRad) + rob_vx * t;
+      const pz = rz - rel_x * Math.sin(abs_tRad) + rob_vz * t;
+      p[idx]=px; p[idx+1]=y; p[idx+2]=pz;
+      gp[idx]=px; gp[idx+1]=y; gp[idx+2]=pz;
+      li=i;
+    }
+  }
+  trajLine.geometry.attributes.position.needsUpdate=true; trajGlow.geometry.attributes.position.needsUpdate=true;
+  trajLine.visible=trajGlow.visible=showTraj;
+
+  const tApex = shot.vy0 / C.g;
+  const ax = rx + shot.xApex * Math.cos(abs_tRad) + rob_vx * tApex;
+  const az = rz - shot.xApex * Math.sin(abs_tRad) + rob_vz * tApex;
+  apexMarker.position.set(ax, shot.apexH, az); apexMarker.visible=showApexM;
+  const al=apexLine.geometry.attributes.position.array; al[0]=ax;al[1]=0;al[2]=az;al[3]=ax;al[4]=shot.apexH;al[5]=az;
+  apexLine.geometry.attributes.position.needsUpdate=true; apexLine.visible=showApexM;
+
+  // SAFEGUARD: Prevent Infinity when vx is extremely close to 0
+  const safe_vx = Math.max(0.001, shot.vx);
+  const tNear = shot.nearEdgeX / safe_vx; 
+  const tFar = shot.farEdgeX / safe_vx;
+  
+  const npx = rx + shot.nearEdgeX * Math.cos(abs_tRad) + rob_vx * tNear;
+  const npz = rz - shot.nearEdgeX * Math.sin(abs_tRad) + rob_vz * tNear;
+  const fpx = rx + shot.farEdgeX * Math.cos(abs_tRad) + rob_vx * tFar;
+  const fpz = rz - shot.farEdgeX * Math.sin(abs_tRad) + rob_vz * tFar;
+  
+  const nc = shot.nearRimClear>0, fc = shot.farRimClear>0;
+  clearNearDot.position.set(npx,shot.hNear,npz); clearNearDot.material.color.setHex(nc?0x4ade80:0xf87171); clearNearDot.visible=showClear;
+  clearFarDot.position.set(fpx,shot.hFar,fpz); clearFarDot.material.color.setHex(fc?0x4ade80:0xf87171); clearFarDot.visible=showClear;
+
+  const cn=clearNearLine.geometry.attributes.position.array; cn[0]=npx;cn[1]=C.hubRimHeight;cn[2]=npz;cn[3]=npx;cn[4]=shot.hNear;cn[5]=npz;
+  clearNearLine.geometry.attributes.position.needsUpdate=true; clearNearLine.material.color.setHex(nc?0x4ade80:0xf87171); clearNearLine.visible=showClear;
+  
+  const cf=clearFarLine.geometry.attributes.position.array; cf[0]=fpx;cf[1]=C.hubRimHeight;cf[2]=fpz;cf[3]=fpx;cf[4]=shot.hFar;cf[5]=fpz;
+  clearFarLine.geometry.attributes.position.needsUpdate=true; clearFarLine.material.color.setHex(fc?0x4ade80:0xf87171); clearFarLine.visible=showClear;
+
+  const hl=hubHeightLine.geometry.attributes.position.array;
+  hl[0]=rx - 0.3*Math.cos(abs_tRad); hl[1]=C.hubRimHeight; hl[2]=rz + 0.3*Math.sin(abs_tRad);
+  hl[3]=rx + (dist+1.5)*Math.cos(abs_tRad); hl[4]=C.hubRimHeight; hl[5]=rz - (dist+1.5)*Math.sin(abs_tRad);
+  hubHeightLine.geometry.attributes.position.needsUpdate=true; hubHeightLine.visible=showSide;
+}
+
+// ═══════════════════════════════════════
+// UI & ORBIT CAMERA
+// ═══════════════════════════════════════
+let drag=false,pm={x:0,y:0};
+let orb={th:.8,ph:.65},oR=6.5,oT=new THREE.Vector3(1.5,1.2,0);
+function setupOrbit(){
+  const el=renderer.domElement;
+  el.addEventListener('mousedown',e=>{drag=true;pm={x:e.clientX,y:e.clientY};});
+  el.addEventListener('mousemove',e=>{if(!drag)return;orb.th-=(e.clientX-pm.x)*.005;orb.ph=Math.max(.08,Math.min(1.5,orb.ph-(e.clientY-pm.y)*.005));pm={x:e.clientX,y:e.clientY};});
+  el.addEventListener('mouseup',()=>drag=false);el.addEventListener('mouseleave',()=>drag=false);
+  el.addEventListener('wheel',e=>{oR=Math.max(2,Math.min(16,oR+e.deltaY*.005));});
+}
+function updCam(){
+  if(autoRot&&!drag)orb.th+=.002;
+  oT.set(rx, 1.2, rz); 
+  camera.position.set(oT.x+oR*Math.sin(orb.ph)*Math.cos(orb.th),oT.y+oR*Math.cos(orb.ph),oT.z+oR*Math.sin(orb.ph)*Math.sin(orb.th));
+  camera.lookAt(oT);
+}
+
+function updateUI() {
+  const dist = Math.hypot(rx, rz);
+
+  let baseShot = computeShot(dist);
+  let vtX = 0 - rob_vx * baseShot.tof;
+  let vtZ = 0 - rob_vz * baseShot.tof;
+  let vdx = vtX - rx;
+  let vdz = vtZ - rz;
+  let vDist = Math.max(C.minDist, Math.min(C.maxDist, Math.hypot(vdx, vdz)));
+  const s = computeShot(vDist);
+
+  let abs_tRad = Math.atan2(-vdz, vdx);
+  tRad = abs_tRad - robot_heading;
+  tRad = Math.atan2(Math.sin(tRad), Math.cos(tRad)); 
+
+  robotGroup.position.set(rx, 0, rz);
+  robotGroup.rotation.y = robot_heading; 
+  turretGroup.rotation.y = tRad;         
+
+  const tDeg = tRad * 180 / Math.PI;
+  document.getElementById('s-dist').value = dist.toFixed(2);
+  document.getElementById('s-turret').value = tDeg.toFixed(0);
+  document.getElementById('v-dist').textContent = dist.toFixed(1)+' m';
+  document.getElementById('v-turret').textContent = tDeg.toFixed(0)+'°';
+
+  eff = +document.getElementById('s-eff').value;
+  apexClear = +document.getElementById('s-apex').value;
+  biasNear = +document.getElementById('s-bn').value;
+  biasFar = +document.getElementById('s-bf').value;
+
+  document.getElementById('v-eff').textContent = eff.toFixed(2);
+  document.getElementById('v-apex').textContent = apexClear.toFixed(2)+' m';
+  document.getElementById('v-bn').textContent = biasNear.toFixed(2);
+  document.getElementById('v-bf').textContent = biasFar.toFixed(2);
+
+  document.getElementById('t-fw').textContent=s.rps.toFixed(1)+' RPS';
+  document.getElementById('t-hood').textContent=s.hoodAng.toFixed(1)+'°';
+  document.getElementById('t-ea').textContent=s.exitDeg.toFixed(1)+'°';
+  document.getElementById('t-ev').textContent=s.exitV.toFixed(1)+' m/s';
+  document.getElementById('t-ah').textContent=s.apexH.toFixed(2)+' m';
+  
+  const ac=document.getElementById('t-ac');
+  ac.textContent=(s.apexAboveRim>=0?'+':'')+s.apexAboveRim.toFixed(2)+' m';
+  ac.className='t-val '+(s.apexAboveRim>=apexClear?'good':s.apexAboveRim>=0?'warn':'bad');
+
+  // Safely update DOM items that were missing from previous versions
+  document.getElementById('t-da').textContent=s.descDeg.toFixed(1)+'°';
+  document.getElementById('t-da').className='t-val '+(s.descDeg>50?'good':s.descDeg>40?'':s.descDeg>30?'warn':'bad');
+  document.getElementById('t-tof').textContent=s.tof.toFixed(3)+' s';
+  
+  const nrc=document.getElementById('t-nrc');
+  nrc.textContent=(s.nearRimClear*100).toFixed(1)+' cm';
+  nrc.className='t-val '+(s.nearRimClear>3?'good':s.nearRimClear>0?'warn':'bad');
+  
+  const frc=document.getElementById('t-frc');
+  frc.textContent=(s.farRimClear*100).toFixed(1)+' cm';
+  frc.className='t-val '+(s.farRimClear>0?'good':'bad');
+  
+  const sc=document.getElementById('t-score');
+  sc.textContent=s.willScore?'YES ✓':'NO ✗';
+  sc.className='t-val '+(s.willScore?'good':'bad');
+
+  document.getElementById('b-dist').textContent=dist.toFixed(1);
+  document.getElementById('b-apex').textContent=s.apexH.toFixed(2);
+  document.getElementById('b-desc').textContent=s.descDeg.toFixed(0);
+  
+  const bnrc = document.getElementById('b-nrc');
+  bnrc.textContent=(s.nearRimClear*100).toFixed(0);
+  bnrc.className='v '+(s.nearRimClear>3?'g':s.nearRimClear>0?'y':'bad');
+  
+  const bfrc = document.getElementById('b-frc');
+  bfrc.textContent=(s.farRimClear*100).toFixed(0);
+  bfrc.className='v '+(s.farRimClear>0?'g':'bad');
+
+  const re=document.getElementById('b-ready');
+  const inR=dist>=C.minDist&&dist<=C.maxDist;
+  if(s.willScore&&inR){re.textContent='● WILL SCORE';re.className='ready-pill ok';}
+  else{
+    let why=!inR?'OUT OF RANGE':s.apexAboveRim<0?'ARC TOO LOW':s.nearRimClear<=0?'CLIPS NEAR RIM':'WON\'T SCORE';
+    re.textContent='● '+why;re.className='ready-pill no';
+  }
+
+  updOvl(s, vDist, abs_tRad);
+}
+
+// ═══════════════════════════════════════
+// ANIMATION LOOP (SWERVE)
+// ═══════════════════════════════════════
+function animate() {
+  requestAnimationFrame(animate);
+  const now = clock.getElapsedTime();
+  let dt = now - (animate.lastTime || now);
+  animate.lastTime = now;
+  if (dt > 0.1) dt = 0.016;
+
+  const MAX_SPEED = 4.5, ACCEL = 20.0, FRICTION = 15.0;
+
+  let ix = 0, iz = 0;
+  if (keys['KeyW']) iz -= 1;
+  if (keys['KeyS']) iz += 1;
+  if (keys['KeyA']) ix -= 1;
+  if (keys['KeyD']) ix += 1;
+
+  if (ix !== 0 || iz !== 0) {
+    let len = Math.hypot(ix, iz);
+    ix /= len; iz /= len;
+    rob_vx += ix * ACCEL * dt;
+    rob_vz += iz * ACCEL * dt;
+  } else {
+    let speed = Math.hypot(rob_vx, rob_vz);
+    if (speed > 0) {
+      let drop = FRICTION * dt;
+      let newSpeed = Math.max(0, speed - drop);
+      let ratio = newSpeed / speed;
+      rob_vx *= ratio;
+      rob_vz *= ratio;
+    }
+  }
+
+  let speed = Math.hypot(rob_vx, rob_vz);
+  if (speed > MAX_SPEED) { rob_vx = (rob_vx / speed) * MAX_SPEED; rob_vz = (rob_vz / speed) * MAX_SPEED; }
+
+  rx += rob_vx * dt;
+  rz += rob_vz * dt;
+
+  if (keys['ArrowLeft']) robot_heading += 3.5 * dt;
+  if (keys['ArrowRight']) robot_heading -= 3.5 * dt;
+
+  if (keys['Space'] && now - lastFire > 0.5) { fireBall(); lastFire = now; }
+
+  updateUI(); 
+  updCam();
+  updateBalls(now);
+
+  const sp = 20 * 0.012;
+  if (fwBot) fwBot.rotation.y += sp; 
+  if (fwTop) fwTop.rotation.y += sp * 2;
+  if (apexMarker.visible) apexMarker.material.opacity = 0.6 + 0.3 * Math.sin(now * 3);
+  
+  renderer.render(scene, camera);
+}
+
+function showPopup(scored) {
+  const el = document.getElementById('score-popup');
+  el.textContent = scored ? 'SCORE!' : 'MISS';
+  el.className = 'score-popup show ' + (scored ? 'scored' : 'missed');
+  clearTimeout(el._t); el._t = setTimeout(() => el.className = 'score-popup', 1000);
+}
+function flashHub(scored) {
+  if(!hubGlowRing)return;
+  hubGlowRing.material.color.setHex(scored?0x4ade80:0xf87171);
+  hubGlowRing.material.opacity=.5;
+  setTimeout(()=>{hubGlowRing.material.color.setHex(0x38bdf8);hubGlowRing.material.opacity=.15;},500);
+}
+function updateScoreBoard() {
+  document.getElementById('sb-score').textContent='SCORES: '+scores;
+  document.getElementById('sb-miss').textContent='MISS: '+misses;
+  document.getElementById('sb-total').textContent='SHOTS: '+totalShots;
+}
+function resetScore() { scores=0;misses=0;totalShots=0; updateScoreBoard(); }
+function tog(id){
+  const el=document.getElementById('tg-'+id), on=el.classList.toggle('on');
+  if(id==='traj')showTraj=on;if(id==='apexm')showApexM=on;
+  if(id==='clear')showClear=on;if(id==='side')showSide=on;
+  if(id==='rot')autoRot=on; updateUI();
+}
+
+init();
+</script>
+</body>
 </html>

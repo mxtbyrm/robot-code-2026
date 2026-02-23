@@ -18,8 +18,29 @@ public final class HubConstants {
     /** Front edge of scoring opening: 72in above the floor */
     public static final double kScoringOpeningHeightMeters = Units.inchesToMeters(72.0); // ~1.829m
 
-    /** Hexagonal scoring opening width: 41.7in */
-    public static final double kScoringOpeningWidthMeters = Units.inchesToMeters(41.7); // ~1.059m
+    // Hexagonal scoring opening geometry:
+    //   41.7in is the FLAT-TO-FLAT (side-to-side) distance — i.e. the inscribed circle diameter.
+    //   This is NOT corner-to-corner (circumscribed).
+    //   Corner-to-corner = flat-to-flat / cos(30°) ≈ 48.18in (circumscribed circle diameter).
+    //
+    //   Hexagon:        |←—— flat-to-flat = 41.7in ——→|
+    //                     ___________
+    //                    /           \         ↑
+    //                   /             \   corner-to-corner ≈ 48.18in
+    //                   \             /        ↓
+    //                    \___________/
+    //
+    //   For minimum ball clearance, use the inscribed radius (flat-to-flat / 2).
+
+    /** Hexagonal scoring opening: flat-to-flat (side-to-side), NOT corner-to-corner. Inscribed circle diameter. */
+    public static final double kScoringOpeningFlatToFlatMeters = Units.inchesToMeters(41.7); // ~1.059m
+
+    /** Hexagonal scoring opening: corner-to-corner (circumscribed circle diameter) = flat-to-flat / cos(30°). */
+    public static final double kScoringOpeningCornerToCornerMeters =
+            kScoringOpeningFlatToFlatMeters / Math.cos(Math.toRadians(30.0)); // ~1.224m (≈48.18in)
+
+    /** Alias for backward compatibility — equals flat-to-flat (inscribed diameter). */
+    public static final double kScoringOpeningWidthMeters = kScoringOpeningFlatToFlatMeters;
 
     /** Number of FUEL exits at the base of the HUB */
     public static final int kBaseExitCount = 4;

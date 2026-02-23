@@ -17,8 +17,11 @@ public final class ShooterConstants {
     public static final double kCompressedBallDiameter = kBallDiameterMeters - kBallCompressionMeters;
 
     // ==================== HUB / GOAL SPECIFICATIONS (delegated to HubConstants) ====================
-    public static final double kHubHeightMeters        = HubConstants.kScoringOpeningHeightMeters;
-    public static final double kHubInnerDiameterMeters = HubConstants.kScoringOpeningWidthMeters;
+    public static final double kHubHeightMeters = HubConstants.kScoringOpeningHeightMeters;
+    // kHubInnerDiameterMeters uses the flat-to-flat (inscribed) diameter — the minimum clearance
+    // dimension. This gives conservative margin: (inscribed_radius - ball_radius).
+    // Use HubConstants.kScoringOpeningCornerToCornerMeters for corner-to-corner (circumscribed).
+    public static final double kHubInnerDiameterMeters = HubConstants.kScoringOpeningFlatToFlatMeters;
 
     // ==================== HUB FIELD POSITIONS (alliance-aware) ====================
     public static final Translation2d kBlueHubPosition = HubConstants.kBlueHubCenter;
