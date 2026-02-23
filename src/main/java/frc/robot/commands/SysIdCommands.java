@@ -72,9 +72,9 @@ public class SysIdCommands {
                         voltage -> drive.runSteerCharacterization(voltage.in(Volts)),
                         log -> {
                             // Signs are already consistent: positive commanded voltage →
-                            // CW motor (CW_Positive) → CCW azimuth (gearbox reverses,
-                            // confirmed by positive RotorToSensorRatio) → positive
-                            // FusedCANcoder reading (CCW_Positive). No negation needed.
+                            // CW motor (CW_Positive) → CCW azimuth (gearbox reverses) →
+                            // positive RemoteCANcoder reading (CCW_Positive).
+                            // No negation needed.
                             SwerveModule[] modules = drive.getModules();
                             for (int i = 0; i < modules.length; i++) {
                                 log.motor("steer-" + modules[i].getName())
