@@ -300,6 +300,16 @@ public class SwerveModule {
         driveMotor.setVoltage(volts);
     }
 
+    /**
+     * Commands the steer motor directly to a position, bypassing anti-jitter logic.
+     * Used by drive SysId to force wheels forward (0 rotations) regardless of last
+     * commanded angle. Also updates lastSteerAngle so subsequent calls hold the angle.
+     */
+    public void setSteerPositionDirect(double rotations) {
+        lastSteerAngle = Rotation2d.fromRotations(rotations);
+        steerMotor.setControl(steerRequest.withPosition(rotations));
+    }
+
     /** Gets the drive motor velocity in wheel-shaft RPS (for SysId logging). */
     public double getDriveVelocityRPS() {
         return driveVelocitySignal.getValueAsDouble();
@@ -315,6 +325,12 @@ public class SwerveModule {
         steerMotor.setVoltage(volts);
     }
 
+    /** Gets the actual steer motor output voltage (for SysId logging).
+     *  Using the real motor voltage — not the SysId-commanded value — ensures
+     *  voltage and velocity are always in the same Phoenix 6 reference frame. */
+    public double getSteerMotorVoltage() {
+        return steerMotor.getMotorVoltage().getValueAsDouble();
+    }
 
     /** Gets the steer motor velocity in azimuth RPS (mechanism, 1 = full wheel rotation). */
     public double getSteerVelocityRPS() {

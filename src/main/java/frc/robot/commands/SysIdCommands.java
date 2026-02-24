@@ -54,7 +54,8 @@ public class SysIdCommands {
                                                         * SwerveConstants.kWheelCircumferenceMeters));
                             }
                         },
-                        drive
+                        drive,
+                        "SwerveDrive"
                 )
         );
     }
@@ -65,27 +66,30 @@ public class SysIdCommands {
         return new SysIdRoutine(
                 new SysIdRoutine.Config(
                         Volts.per(Second).of(0.5),
-                        Volts.of(3.0),
-                        Seconds.of(5.0)
+                        Volts.of(0.75),  // ~80° total rotation during quasistatic — safe for cable mgmt
+                        Seconds.of(2.0)  // 0.75V / 0.5V/s = 1.5s ramp + 0.5s margin
                 ),
                 new SysIdRoutine.Mechanism(
                         voltage -> drive.runSteerCharacterization(voltage.in(Volts)),
                         log -> {
-                            // Signs are already consistent: positive commanded voltage →
-                            // CW motor (CW_Positive) → CCW azimuth (gearbox reverses) →
-                            // positive RemoteCANcoder reading (CCW_Positive).
-                            // No negation needed.
+                            // Phoenix 6 with RemoteCANcoder accounts for the motor's
+                            // Clockwise_Positive inversion internally: getVelocity()
+                            // returns positive when the motor turns in its positive (CW)
+                            // direction, matching the sign of the applied voltage.
+                            // No negation needed — logging position/velocity directly
+                            // gives SysId the correct sign relationship.
                             SwerveModule[] modules = drive.getModules();
                             for (int i = 0; i < modules.length; i++) {
                                 log.motor("steer-" + modules[i].getName())
-                                        .voltage(Volts.of(drive.getSysIdSteerVolts()))
+                                        .voltage(Volts.of(modules[i].getSteerMotorVoltage()))
                                         .angularPosition(Rotations.of(
                                                 modules[i].getSteerPositionRotations()))
                                         .angularVelocity(RotationsPerSecond.of(
                                                 modules[i].getSteerVelocityRPS()));
                             }
                         },
-                        drive
+                        drive,
+                        "SwerveSteer"
                 )
         );
     }

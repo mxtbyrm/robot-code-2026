@@ -618,7 +618,10 @@ public class SwerveDrive extends SubsystemBase {
     public void runDriveCharacterization(double volts) {
         sysIdDriveVolts = volts;
         for (SwerveModule module : modules) {
-            module.setDesiredState(new SwerveModuleState(0, new Rotation2d()));
+            // Use setSteerPositionDirect instead of setDesiredState — setDesiredState
+            // has anti-jitter logic that skips updating lastSteerAngle when speed is 0,
+            // causing wheels to stay at whatever diagonal angle they were last commanded to.
+            module.setSteerPositionDirect(0);
         }
         for (SwerveModule module : modules) {
             module.setDriveVoltage(volts);
